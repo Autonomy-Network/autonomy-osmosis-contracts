@@ -1,0 +1,38 @@
+{
+  "name": "autonomy-station-test",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "test": "ts-node ./src/index.ts",
+
+    "test:localosmosis-setup-common": "npm run test --mode=localosmosis_setup_common",
+    "test:localosmosis-tests-wrapper": "npm run test --mode=localosmosis_tests_wrapperosmosis"
+  },
+  "dependencies": {
+    "@cosmjs/cosmwasm-stargate": "^0.28.4",
+    "@cosmjs/proto-signing": "^0.28.4",
+    "@cosmjs/sdk38": "^0.21.1",
+    "@cosmjs/stargate": "^0.28.4",
+    "@types/crypto-js": "^4.0.2",
+    "@terra-money/terra.js": "^3.1.2",
+    "bn.js": "^5.2.0",
+    "chai": "^4.3.4",
+    "chai-as-promised": "^7.1.1",
+    "chalk": "^4.1.2",
+    "merkletreejs": "^0.2.24"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.1.0",
+    "@types/chai": "^4.2.21",
+    "@types/chai-as-promised": "^7.1.4",
+    "@types/chalk": "^2.2.0",
+    "@types/node": "^16.7.1",
+    "@typescript-eslint/eslint-plugin": "^4.31.0",
+    "@typescript-eslint/parser": "^4.31.0",
+    "eslint": "^7.32.0",
+    "ts-node": "^10.2.1",
+    "tslib": "^2.3.1",
+    "typescript": "^4.3.5"
+  }
+}

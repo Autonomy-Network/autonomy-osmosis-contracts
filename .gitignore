@@ -21,6 +21,4 @@ node_modules
 
 integration-tests/src/config/localosmosisConstants.ts
 integration-tests/src/config/wasmPaths.ts
-
-scripts
-ts
+integration-tests/src/config/wasms
