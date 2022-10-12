@@ -1,0 +1,155 @@
+use autonomy::{
+    asset::{Asset, AssetInfo},
+    types::OrderBy,
+};
+use cosmwasm_std::{Binary, Uint128};
+use cw20::Cw20ReceiveMsg;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
+use crate::state::Request;
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
+pub struct CreateOrUpdateConfig {
+    pub owner: Option<String>,
+    pub fee_amount: Option<Uint128>,
+    pub fee_denom: Option<String>,
+    pub auto: Option<AssetInfo>,
+    pub stake_amount: Option<Uint128>,
+    pub blocks_in_epoch: Option<u64>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
+pub struct InstantiateMsg {
+    pub config: CreateOrUpdateConfig
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+pub struct MigrateMsg {}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
+pub struct CreateRequestInfo {
+    pub target: String,
+    pub msg: Binary,
+    pub input_asset: Asset,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ExecuteMsg {
+    /// Update Config
+    UpdateConfig {
+        config: CreateOrUpdateConfig
+    },
+
+    /// Create a new execution request
+    CreateRequest {
+        request_info: CreateRequestInfo
+    },
+
+    /// Cancel a request
+    CancelRequest {
+        id: u64,
+    },
+
+    /// Execute a request
+    ExecuteRequest {
+        id: u64,
+    },
+
+    /// Implemention for cw20 receive msg, when staking
+    Receive(Cw20ReceiveMsg),
+
+    /// Staking when execution fee is native asset
+    StakeDenom {
+        num_stakes: u64,
+    },
+
+    /// Unstake assets
+    Unstake {
+        idxs: Vec<u64>,
+    },
+
+    /// Update executor for current epoch
+    UpdateExecutor {},
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Cw20HookMsg {
+    /// Stake AUTO to be an executor
+    Stake { num_stakes: u64 },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum QueryMsg {
+    /// Get registry config
+    Config {},
+    /// Get current state of registry
+    State {},
+    /// Get details of a single request
+    RequestInfo {
+        id: u64,
+    },
+    /// Get many requests
+    Requests {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+        order_by: Option<OrderBy>,
+    },
+    /// Get current executor rotation epoch info
+    EpochInfo {},
+    /// Get staked amount of a user
+    StakeAmount {
+        user: String,
+    },
+    /// Get array of staked addresses
+    Stakes {
+        start: u64,
+        limit: u64,
+    },
+}
+
+/// Response for query registry state
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
+pub struct StateResponse {
+    pub curr_executing_request_id: u64,
+    pub total_requests: u64,
+    pub next_request_id: u64,
+    pub total_stake_amount: Uint128,
+    pub stakes_len: u64,
+}
+
+/// Response for single request query
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
+pub struct RequestInfoResponse {
+    pub id: u64,
+    pub request: Request,
+}
+
+/// Response for query many requests
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
+pub struct RequestsResponse {
+    pub requests: Vec<RequestInfoResponse>,
+}
+
+/// Response for current epoch info
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
+pub struct EpochInfoResponse {
+    pub cur_epoch: u64,
+    pub last_epoch: u64,
+    pub executor: String,
+}
+
+/// Response for staked amount of a user
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
+pub struct StakeAmountResponse {
+    pub amount: Uint128,
+}
+
+/// Response for staked list
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
+pub struct StakesResponse {
+    pub stakes: Vec<String>,
+}
