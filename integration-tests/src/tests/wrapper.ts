@@ -139,6 +139,9 @@ async function testWrapperWholeFlow(
     },
   });
 
+  // Query current requests count
+  const totalRequests0 = (await registryClient.state()).total_requests;
+
   await registryClient.createRequest({
     requestInfo: {
       target: wrapperOsmosis,
@@ -156,7 +159,7 @@ async function testWrapperWholeFlow(
 
   // Check if the request created
   const requestsQuery: any = await registryClient.requests({});
-  const requestId = requestsQuery.requests[0].id;
+  const requestId = requestsQuery.requests[totalRequests0].id;
 
   // Record the TCW balance of Wallet2
   const beforeTcw = await client.getBalance(localosmosis.addresses.wallet2, out_denom);
@@ -187,6 +190,10 @@ async function testWrapperWholeFlow(
 
   expect(parseInt(afterTcwBalance) != parseInt(beoreTcwBalance)).to.be.ok;
   expect(parseInt(afterUosmoBalance) != parseInt(beforeUosmoBalance)).to.be.ok;
+
+  const totalRequests1 = (await registryClient.state()).total_requests;
+  const requests: any = await registryClient.requests({});
+  expect(requests.requests.length).to.be.equal(totalRequests0).to.be.equal(totalRequests1);
 
   console.log(chalk.green(" Passed!"));
 }
