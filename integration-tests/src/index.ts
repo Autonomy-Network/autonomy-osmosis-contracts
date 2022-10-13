@@ -9,11 +9,11 @@ import * as LocalOsmosis from './localosmosis';
 
 		/* -   Osmosis local network    -  */
 
-		case "localosmosis_setup_common":
+		case "localosmosis_setup":
 			await LocalOsmosis.startSetupCommon();
 			break;
 
-		case "localosmosis_tests_wrapperosmosis":
+		case "localosmosis_test":
 			await LocalOsmosis.startTestsWrapperOsmosis();
 			break;
 

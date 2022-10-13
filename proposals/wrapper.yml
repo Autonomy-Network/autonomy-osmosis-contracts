@@ -1,0 +1,33 @@
+title: Upload Stops/Limits Contract of Autonomy Network
+description: |
+          ## Summary
+
+          The **Limits/Stops Astroport** has successfully gone through testnet and is now ready to launch onto the Osmosis mainnet.
+
+          Vote **YES** on this proposal if you want the bytecodes of wrapper contract (as part of Autonomy Network) to be put onto Osmosis.
+          Vote **NO** on this proposal if you do not want the bytecodes of wrapper contract (as part of Autonomy Network) to go on chain.
+
+          ## Repo
+
+          https://github.com/Autonomy-Network/autonomy-osmosis-contracts/tree/main/contracts/wrapper-astroport
+
+          Checksum of the contracts are following.
+
+          ### Compiled
+
+          ```
+          # Intermediate
+          a913cfceb35207dcf6d5ac558c0b1dc923a11ceebe6ebc693d1155fd4237bde6 ./target/wasm32-unknown-unknown/release/wrapper_osmosis.wasm
+
+          # Optimized
+          cfa308e1129622eded62d2e9f2b5211f490a2a1c549ab8a9dec3c57a1ffd8479  wrapper_osmosis.wasm
+          ```
+
+          ## About limits/stops wrapper:
+          This proposal aims to deploy the necessary code on-chain for a wrapper contract around the Osmosis DEX that, when used with the Autonomy Registry (deployed in a simultaneous proposal with this one), adds the ability to do limits and stops on Osmosis.
+          More info at https://gov.osmosis.zone/discussion/6921-proposal-for-adding-limits-and-stops
+deposit: 500000000uosmo
+code:
+    repo:   https://github.com/Autonomy-Network/autonomy-osmosis-contracts
+    rust_flags: -C link-arg=-s
+    roptimizer: workspace-optimizer:0.12.6

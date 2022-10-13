@@ -1,0 +1,11 @@
+{
+  "testnet": {
+    "registry_stake": {
+      "code_id": null,
+      "addresses": {},
+      "proposal": {
+        "store_code": 56932
+      }
+    }
+  }
+}
