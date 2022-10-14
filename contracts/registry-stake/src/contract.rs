@@ -118,6 +118,7 @@ pub fn update_config(
 ) -> Result<Response, ContractError> {
     let mut config = read_config(deps.storage)?;
 
+    // Only owner can update config
     if info.sender != config.owner {
         return Err(CommonError::Unauthorized {}.into());
     }
@@ -170,7 +171,8 @@ pub fn create_request(
             return Err(ContractError::InsufficientFee {});
         }
 
-        // Subtract fee amount
+        // Funds array is used for the input asset process
+        // so Subtract fee amount
         funds[fee_fund_index].amount -= config.fee_amount;
     } else {
         return Err(ContractError::NoFeePaid {});
@@ -254,15 +256,15 @@ pub fn cancel_request(
     let mut msgs: Vec<CosmosMsg> = vec![];
 
     let input_asset = request.input_asset.clone();
-    match input_asset.info {
-        AssetInfo::NativeToken { denom: _ } => {
-            msgs.push(CosmosMsg::Bank(BankMsg::Send {
-                to_address: request.user.to_string(),
-                amount: vec![input_asset.deduct_tax(&deps.querier)?],
-            }));
-        }
-        AssetInfo::Token { contract_addr } => {
-            if !request.input_asset.amount.is_zero() {
+    if !input_asset.amount.is_zero() {
+        match input_asset.info {
+            AssetInfo::NativeToken { denom: _ } => {
+                msgs.push(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: request.user.to_string(),
+                    amount: vec![input_asset.deduct_tax(&deps.querier)?],
+                }));
+            }
+            AssetInfo::Token { contract_addr } => {
                 msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: contract_addr.to_string(),
                     msg: to_binary(&Cw20ExecuteMsg::Transfer {
