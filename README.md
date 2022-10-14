@@ -39,7 +39,8 @@ Use `cargo wasm` and `optimize.sh` if that's what you like.
 ```bash
 cd ./integration-tests
 yarn test:localosmosis-setup
-yarn test:localosmosis-test
+yarn test:localosmosis-test-wrapper
+yarn test:localosmosis-test-registry
 ```
 
 Explore more inside integration-tests.
