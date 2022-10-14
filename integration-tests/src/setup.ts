@@ -42,8 +42,8 @@ export async function setupCommon(
     wallet3 = wallets.wallet3;
 
     // Send some tokens to wallets
-    await client.sendTokens(localosmosis.addresses.wallet1, localosmosis.addresses.wallet2, [coin("100000000", "uion"), coin("100000000", "uosmo")], "auto");
-    await client.sendTokens(localosmosis.addresses.wallet1, localosmosis.addresses.wallet3, [coin("100000000", "uion"), coin("100000000", "uosmo")], "auto");
+    // await client.sendTokens(localosmosis.addresses.wallet1, localosmosis.addresses.wallet2, [coin("100000000", "uion"), coin("100000000", "uosmo")], "auto");
+    // await client.sendTokens(localosmosis.addresses.wallet1, localosmosis.addresses.wallet3, [coin("100000000", "uion"), coin("100000000", "uosmo")], "auto");
 
     await setup(client, wallet1);
 

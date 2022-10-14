@@ -11,6 +11,7 @@ import { localosmosis } from "./config/localosmosisConstants";
 import { setupCommon } from "./setup";
 
 import { testExecuteWrapperOsmosis } from "./tests/wrapper";
+import { testExecuteRegistry } from "./tests/registry";
 
 
 // -------------------------------------------------------------------------------------
@@ -50,6 +51,12 @@ async function initializeCommon() {
     console.log(`Use ${chalk.cyan(account1.address)} as Wallet 1`);
     console.log(`Use ${chalk.cyan(account2.address)} as Wallet 2`);
     console.log(`Use ${chalk.cyan(account3.address)} as Wallet 3`);
+
+    auto = localosmosis.contracts.auto;
+    registry = localosmosis.contracts.registry;
+
+    console.log(`Use ${chalk.cyan(auto)} as AUTO token`);
+    console.log(`Use ${chalk.cyan(registry)} as Registry`);
 }
 
 
@@ -103,9 +110,9 @@ export async function startSetupCommon(): Promise<void> {
 
 
 // -------------------------------------------------------------------------------------
-// start wrapper-osmosis test
+// Wrapper
 // -------------------------------------------------------------------------------------
-export async function startTestsWrapperOsmosis(): Promise<void> {
+export async function startTestWrapper(): Promise<void> {
     console.log(chalk.blue("\nTestNet"));
 
     // Initialize environment information
@@ -125,4 +132,23 @@ export async function startTestsWrapperOsmosis(): Promise<void> {
         outDenom,
         wrapperOsmosis,
     );
+}
+
+
+// -------------------------------------------------------------------------------------
+// Registry
+// -------------------------------------------------------------------------------------
+export async function startTestRegistry(): Promise<void> {
+  console.log(chalk.blue("\nTestNet"));
+
+  // Initialize environment information
+  console.log(chalk.yellow("\nStep 1. Environment Info"));
+  await initializeCommon();
+
+  // Test registry
+  await testExecuteRegistry(
+    client,
+    auto,
+    registry
+  );
 }

@@ -26,7 +26,7 @@ export async function testExecuteWrapperOsmosis(
   out_denom: string,
   wrapperOsmosis: string,
 ): Promise<void> {
-  console.log(chalk.yellow("\nStep 3. Running Tests"));
+  console.log(chalk.yellow("\nStep 2. Running Tests"));
 
   // Wallet1 add liquidity
   // await walletAddLiquidity(wallet1, localosmosis.addresses.wallet1, tcw, tcwUosmoSwap, "1000000", "1000000");

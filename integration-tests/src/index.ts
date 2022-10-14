@@ -13,9 +13,13 @@ import * as LocalOsmosis from './localosmosis';
 			await LocalOsmosis.startSetupCommon();
 			break;
 
-		case "localosmosis_test":
-			await LocalOsmosis.startTestsWrapperOsmosis();
+		case "localosmosis_testWrapper":
+			await LocalOsmosis.startTestWrapper();
 			break;
+
+    case "localosmosis_testRegistry":
+      await LocalOsmosis.startTestRegistry();
+      break;
 
 		default:
 			console.log("Invalid command");

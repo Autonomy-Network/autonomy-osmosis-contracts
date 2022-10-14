@@ -7,7 +7,8 @@
     "test": "ts-node ./src/index.ts",
 
     "test:localosmosis-setup": "npm run test --mode=localosmosis_setup",
-    "test:localosmosis-test": "npm run test --mode=localosmosis_test"
+    "test:localosmosis-test-wrapper": "npm run test --mode=localosmosis_testWrapper",
+    "test:localosmosis-test-registry": "npm run test --mode=localosmosis_testRegistry"
   },
   "dependencies": {
     "@cosmjs/cosmwasm-stargate": "^0.28.4",

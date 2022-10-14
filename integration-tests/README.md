@@ -73,7 +73,8 @@ nano ./src/config/localosmosisConstants.ts
 ```bash
 yarn
 yarn test:localosmosis-setup
-yarn test:localosmosis-test
+yarn test:localosmosis-test-wrapper
+yarn test:localosmosis-test-registry
 ```
 
 **NOTE:** After each of the setup commands, you may see key contract addresses or wasm codes that will need to updated in your `localosmosisConstants.ts` file before proceeding to run the next command. These commands build upon on another.
