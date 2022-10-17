@@ -1,6 +1,4 @@
-use cosmwasm_std::{
-    Addr, Api, StdResult,
-};
+use cosmwasm_std::{Addr, Api, StdResult};
 
 /// Used when unwrapping an optional address sent in a contract call by a user.
 /// Validates addreess if present, otherwise uses a given default value.

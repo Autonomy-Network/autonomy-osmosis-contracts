@@ -57,6 +57,15 @@ pub fn execute(
     }
 }
 
+/// Wrap osmosis swap operation between two assets
+/// - Validates output amount to be in a specifc range
+/// - Params
+///     `user`: the address that receives the outputs
+///     `first`: swap info for the first pool, `denom_in` is the input asset for the swap
+///     `route`: route contains several pools connected to output asset
+///     `amount`: amount of input asset
+///     `min_output`: minimum output amount
+///     `max_output`: maximum output amount
 pub fn execute_swap(
     deps: DepsMut<OsmosisQuery>,
     env: Env,
@@ -111,6 +120,13 @@ pub fn execute_swap(
         .add_messages(msgs))
 }
 
+/// Validates swap output result
+/// - Should be only called via this wrapper contract
+/// - Params
+///     `user`: address to receive outputs
+///     `denom`: denom for the output asset
+///     `balance_before`: balance of output asset before swap
+///     `min_output`, `max_output`: range of output amount
 pub fn execute_check_range(
     deps: DepsMut<OsmosisQuery>,
     env: Env,
@@ -146,8 +162,7 @@ pub fn execute_check_range(
     }
 
     // Transfer output asset to the user
-    let msgs: Vec<CosmosMsg<OsmosisMsg>> = vec![
-        CosmosMsg::Bank(BankMsg::Send {
+    let msgs: Vec<CosmosMsg<OsmosisMsg>> = vec![CosmosMsg::Bank(BankMsg::Send {
         to_address: user_addr.to_string(),
         amount: coins(output.u128(), denom),
     })];

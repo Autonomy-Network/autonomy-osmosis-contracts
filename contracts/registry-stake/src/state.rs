@@ -2,7 +2,7 @@ use std::convert::TryInto;
 
 use autonomy::{
     asset::{Asset, AssetInfo},
-    types::{OrderBy},
+    types::OrderBy,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -24,10 +24,10 @@ pub struct Config {
     /// Amount of request execution fee
     pub fee_amount: Uint128,
 
-    /// Asset denom of request execution fee
+    /// Asset denom of request execution fee; we will limit to OSMO for osmosis
     pub fee_denom: String,
 
-    /// Auto token for executors
+    /// AUTO token for executors
     pub auto: AssetInfo,
 
     /// Single stake amount
@@ -51,13 +51,13 @@ pub struct State {
     /// Request Id of currently being executed
     pub curr_executing_request_id: u64,
 
-    /// Request Id of last request
+    /// Id of the request will be created for next
     pub next_request_id: u64,
 
     /// Number of total requests in the queue
     pub total_requests: u64,
 
-    /// Number of stakers who wants to be an executor
+    /// Total amount of staked AUTO
     pub total_staked: Uint128,
 
     /// Address list of all stakers
@@ -95,9 +95,6 @@ pub struct Request {
 
     /// Asset sent in advance
     pub input_asset: Asset,
-
-    /// Timestamp of creation
-    pub created_at: u64,
 }
 
 pub fn read_request(storage: &dyn Storage, id: u64) -> StdResult<Request> {

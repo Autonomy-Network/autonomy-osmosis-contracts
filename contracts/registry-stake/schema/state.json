@@ -30,7 +30,7 @@
       "minimum": 0.0
     },
     "next_request_id": {
-      "description": "Request Id of last request",
+      "description": "Id of the request will be created for next",
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0

@@ -100,7 +100,6 @@
       "description": "Actual request struct",
       "type": "object",
       "required": [
-        "created_at",
         "executor",
         "input_asset",
         "msg",
@@ -108,12 +107,6 @@
         "user"
       ],
       "properties": {
-        "created_at": {
-          "description": "Timestamp of creation",
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        },
         "executor": {
           "description": "The executor who is gonna run this request.",
           "type": "string"

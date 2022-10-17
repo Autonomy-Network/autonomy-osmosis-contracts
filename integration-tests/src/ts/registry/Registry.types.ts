@@ -159,7 +159,6 @@ export interface RequestInfoResponse {
   [k: string]: unknown;
 }
 export interface Request {
-  created_at: number;
   executor: string;
   input_asset: Asset;
   msg: Binary;

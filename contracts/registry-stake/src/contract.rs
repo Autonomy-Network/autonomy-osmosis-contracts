@@ -3,8 +3,7 @@ use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
     attr, from_binary, to_binary, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Reply, ReplyOn, Response, StdResult, SubMsg, SubMsgResult, Uint128,
-    WasmMsg,
+    MessageInfo, Reply, ReplyOn, Response, StdResult, SubMsg, SubMsgResult, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
@@ -15,8 +14,8 @@ use autonomy::types::OrderBy;
 
 use crate::error::ContractError;
 use crate::msg::{
-    CreateOrUpdateConfig, CreateRequestInfo, Cw20HookMsg, EpochInfoResponse,
-    ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, RequestInfoResponse, RequestsResponse,
+    CreateOrUpdateConfig, CreateRequestInfo, Cw20HookMsg, EpochInfoResponse, ExecuteMsg,
+    InstantiateMsg, MigrateMsg, QueryMsg, RequestInfoResponse, RequestsResponse,
     StakeAmountResponse, StakesResponse, StateResponse,
 };
 use crate::state::{
@@ -110,6 +109,7 @@ pub fn execute(
     }
 }
 
+/// Update configuration
 pub fn update_config(
     deps: DepsMut,
     _env: Env,
@@ -146,6 +146,11 @@ pub fn update_config(
     Ok(Response::new().add_attribute("action", "update_config"))
 }
 
+/// Creates a new request
+/// - Funds should cover the execution fee and the asset for the request execution
+/// - Executor for the current epoch is set for this request
+///   if there's no executor, anyone can execute the request
+/// - Request Id increases from zero by one
 pub fn create_request(
     deps: DepsMut,
     env: Env,
@@ -206,10 +211,10 @@ pub fn create_request(
     // Update executor
     let cur_epoch = env.block.height / config.blocks_in_epoch * config.blocks_in_epoch;
     if cur_epoch != state.last_epoch {
-        _update_executor(&mut state, env.clone(), config.blocks_in_epoch);
+        _update_executor(&mut state, env, config.blocks_in_epoch);
 
         // if state.executor == "" {
-        //     return Err(StdError::generic_err("no executor"));
+        //     return Err(ContractError::NoExecutor { });
         // }
     }
 
@@ -221,7 +226,6 @@ pub fn create_request(
         target: target_addr.to_string(),
         msg: request_info.msg,
         input_asset: request_info.input_asset,
-        created_at: env.block.time.seconds(),
     };
 
     state.next_request_id += 1;
@@ -236,6 +240,10 @@ pub fn create_request(
     ]))
 }
 
+/// Cancel the request with `id`
+/// - Return the escrowed assets for the request execution
+/// - Return execution fee
+/// - Remove request from the storage
 pub fn cancel_request(
     deps: DepsMut,
     _env: Env,
@@ -302,6 +310,10 @@ pub fn cancel_request(
     ]))
 }
 
+/// Execute request with `id`
+/// - Forward escrowed assets and call the target contract
+/// - Transfer execution fees to the executor
+/// - Fails if executor doesn't match
 pub fn execute_request(
     deps: DepsMut,
     info: MessageInfo,
@@ -400,6 +412,7 @@ pub fn execute_request(
     ]))
 }
 
+/// Process when we receive AUTO tokens for staking
 pub fn receive_cw20(
     deps: DepsMut,
     env: Env,
@@ -429,6 +442,7 @@ pub fn receive_cw20(
     }
 }
 
+/// Process stakings when AUTO is native token
 pub fn receive_denom(
     deps: DepsMut,
     env: Env,
@@ -438,9 +452,7 @@ pub fn receive_denom(
     let config = read_config(deps.storage)?;
 
     match config.auto {
-        AssetInfo::Token { contract_addr: _ } => {
-            Err(CommonError::Unauthorized { }.into())
-        }
+        AssetInfo::Token { contract_addr: _ } => Err(CommonError::Unauthorized {}.into()),
         AssetInfo::NativeToken { denom } => {
             let received_auto = info
                 .funds
@@ -454,6 +466,10 @@ pub fn receive_denom(
     }
 }
 
+/// Update stakes for new stakings
+/// - Add user address to array `num_stakes` times
+/// - Update user's and total staking balances
+/// - Update executor
 pub fn stake(
     deps: DepsMut,
     env: Env,
@@ -466,7 +482,7 @@ pub fn stake(
 
     // Validate amount
     if config.stake_amount * Uint128::from(num_stakes) != amount {
-        return Err(ContractError::InvalidStakeInfo { });
+        return Err(ContractError::InvalidStakeInfo {});
     }
 
     // Update executor
@@ -492,6 +508,10 @@ pub fn stake(
     ]))
 }
 
+/// Unstake AUTO
+/// - Remove from stakes array at indexes of `idxs`
+/// - Return staked AUTO
+/// - Updates executor
 pub fn unstake(
     deps: DepsMut,
     env: Env,
@@ -510,10 +530,10 @@ pub fn unstake(
         let idx = *idx as usize;
         let addr = deps.api.addr_validate(&state.stakes[idx])?;
         if addr != info.sender {
-            return Err(ContractError::IdxNotYou { });
+            return Err(ContractError::IdxNotYou {});
         }
         if idx >= state.stakes.len() {
-            return Err(ContractError::IdxOutOfBound { });
+            return Err(ContractError::IdxOutOfBound {});
         }
         state.stakes.swap_remove(idx);
     }
@@ -557,6 +577,10 @@ pub fn unstake(
     ]))
 }
 
+/// Util fcn for executor update
+/// It first checks the executor is set for current epoch
+/// If not, decide current epoch and set the executor
+/// If nobody staked yet, then executor is set to empty string
 fn _update_executor(state: &mut State, env: Env, blocks_in_epoch: u64) {
     let last_epoch = env.block.height / blocks_in_epoch * blocks_in_epoch;
     if state.last_epoch != last_epoch {
@@ -573,6 +597,10 @@ fn _update_executor(state: &mut State, env: Env, blocks_in_epoch: u64) {
     }
 }
 
+/// Update executor for current epoch
+/// It first checks the executor is set for current epoch
+/// If not, decide current epoch and set the executor
+/// If nobody staked yet, then executor is set to empty string
 pub fn update_executor(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
     let config = read_config(deps.storage)?;
 
@@ -595,6 +623,8 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
     }
 }
 
+/// Reply when execution is done
+/// - Sets the `curr_executing_request_id` back to default value
 pub fn execute_reply(
     deps: DepsMut,
     _env: Env,
@@ -634,11 +664,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
+/// Return config
 pub fn query_config(deps: Deps) -> StdResult<Config> {
     let config = read_config(deps.storage)?;
     Ok(config)
 }
 
+/// Return info of reqeust with `id`, returns default value when not exists
 pub fn query_request_info(deps: Deps, id: u64) -> StdResult<RequestInfoResponse> {
     let info = read_request(deps.storage, id).unwrap_or(Request {
         user: zero_string(),
@@ -651,11 +683,11 @@ pub fn query_request_info(deps: Deps, id: u64) -> StdResult<RequestInfoResponse>
             },
             amount: Uint128::zero(),
         },
-        created_at: 0,
     });
     Ok(RequestInfoResponse { id, request: info })
 }
 
+/// Return several requests
 pub fn query_requests(
     deps: Deps,
     start_after: Option<u64>,
@@ -683,6 +715,7 @@ pub fn query_requests(
     })
 }
 
+/// Return current state of requests and stakes
 pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
     let state = read_state(deps.storage)?;
     let resp = StateResponse {
@@ -696,6 +729,7 @@ pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
     Ok(resp)
 }
 
+/// Return current epoch info
 pub fn query_epoch_info(deps: Deps, env: Env) -> StdResult<EpochInfoResponse> {
     let state = read_state(deps.storage)?;
     let config = read_config(deps.storage)?;
@@ -709,6 +743,7 @@ pub fn query_epoch_info(deps: Deps, env: Env) -> StdResult<EpochInfoResponse> {
     Ok(resp)
 }
 
+/// Return staked amount of the user
 pub fn query_stake_amount(deps: Deps, user: String) -> StdResult<StakeAmountResponse> {
     let amount = read_balance(deps.storage, deps.api.addr_validate(&user)?);
     let resp = StakeAmountResponse { amount };
@@ -716,6 +751,7 @@ pub fn query_stake_amount(deps: Deps, user: String) -> StdResult<StakeAmountResp
     Ok(resp)
 }
 
+/// Return stakes of a range
 pub fn query_stakes(deps: Deps, start: u64, limit: u64) -> StdResult<StakesResponse> {
     let state = read_state(deps.storage)?;
 
