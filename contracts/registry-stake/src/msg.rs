@@ -48,6 +48,9 @@ pub struct CreateRequestInfo {
 
     /// Assets used for this call
     pub input_asset: Asset,
+
+    /// Is this recurring request?
+    pub is_recurring: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -55,12 +58,22 @@ pub struct CreateRequestInfo {
 pub enum ExecuteMsg {
     /// Update Config
     UpdateConfig { config: CreateOrUpdateConfig },
+
+    /// Registry
+
     /// Create a new execution request
     CreateRequest { request_info: CreateRequestInfo },
     /// Cancel a request with `id`
     CancelRequest { id: u64 },
     /// Execute a request with `id`
     ExecuteRequest { id: u64 },
+    /// Deposit into recurring fee pool
+    DepositRecurringFee { recurring_count: u64 },
+    /// Withdraw from recurring fee pool
+    WithdrawRecurringFee { recurring_count: u64 },
+
+    /// Staking
+
     /// Implemention for cw20 receive msg, when staking
     Receive(Cw20ReceiveMsg),
     /// Staking when execution fee is native asset

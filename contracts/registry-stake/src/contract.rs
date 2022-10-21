@@ -19,8 +19,9 @@ use crate::msg::{
     StakeAmountResponse, StakesResponse, StateResponse,
 };
 use crate::state::{
-    read_balance, read_config, read_request, read_requests, read_state, remove_request,
-    store_balance, store_config, store_request, store_state, Config, Request, State,
+    read_balance, read_config, read_recurring_fee, read_request, read_requests, read_state,
+    remove_request, store_balance, store_config, store_recurring_fee, store_request, store_state,
+    Config, Request, State,
 };
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -70,6 +71,7 @@ pub fn instantiate(
         executor: zero_string(),
         stakes: vec![],
         total_staked: Uint128::zero(),
+        total_recurring_fee: Uint128::zero(),
     };
 
     store_config(deps.storage, &config)?;
@@ -91,6 +93,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
+        // Registry
         ExecuteMsg::UpdateConfig { config } => update_config(deps, env, info, config),
 
         ExecuteMsg::CreateRequest { request_info } => create_request(deps, env, info, request_info),
@@ -99,6 +102,15 @@ pub fn execute(
 
         ExecuteMsg::ExecuteRequest { id } => execute_request(deps, info, id),
 
+        ExecuteMsg::DepositRecurringFee { recurring_count } => {
+            deposit_recurring_fee(deps, info, recurring_count)
+        }
+
+        ExecuteMsg::WithdrawRecurringFee { recurring_count } => {
+            withdraw_recurring_fee(deps, info, recurring_count)
+        }
+
+        // Staking
         ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
 
         ExecuteMsg::StakeDenom { num_stakes } => receive_denom(deps, env, info, num_stakes),
@@ -169,18 +181,20 @@ pub fn create_request(
         return Err(ContractError::InvalidInputAssets {});
     }
 
-    // Funds should contain execution fee
-    if let Some(fee_fund_index) = funds.iter().position(|f| f.denom == config.fee_denom) {
-        // Fee amount should be enough
-        if funds[fee_fund_index].amount < config.fee_amount {
-            return Err(ContractError::InsufficientFee {});
-        }
+    // If this is not recurring request, funds should contain execution fee
+    if !request_info.is_recurring {
+        if let Some(fee_fund_index) = funds.iter().position(|f| f.denom == config.fee_denom) {
+            // Fee amount should be enough
+            if funds[fee_fund_index].amount < config.fee_amount {
+                return Err(ContractError::InsufficientFee {});
+            }
 
-        // Funds array is used for the input asset process
-        // so Subtract fee amount
-        funds[fee_fund_index].amount -= config.fee_amount;
-    } else {
-        return Err(ContractError::NoFeePaid {});
+            // Funds array is used for the input asset process
+            // so Subtract fee amount
+            funds[fee_fund_index].amount -= config.fee_amount;
+        } else {
+            return Err(ContractError::NoFeePaid {});
+        }
     }
 
     // Check fund tokens will be used for request
@@ -222,10 +236,15 @@ pub fn create_request(
     let id = state.next_request_id;
     let request = Request {
         user: info.sender.to_string(),
-        executor: state.executor.to_string(),
+        executor: if request_info.is_recurring {
+            zero_string()
+        } else {
+            state.executor.to_string()
+        },
         target: target_addr.to_string(),
         msg: request_info.msg,
         input_asset: request_info.input_asset,
+        is_recurring: request_info.is_recurring,
     };
 
     state.next_request_id += 1;
@@ -285,17 +304,19 @@ pub fn cancel_request(
         }
     }
 
-    // Return fee asset
-    let fee_asset = Asset {
-        info: AssetInfo::NativeToken {
-            denom: config.fee_denom,
-        },
-        amount: config.fee_amount,
-    };
-    msgs.push(CosmosMsg::Bank(BankMsg::Send {
-        to_address: request.user,
-        amount: vec![fee_asset.deduct_tax(&deps.querier)?],
-    }));
+    // Return fee asset if not recurring request
+    if !request.is_recurring {
+        let fee_asset = Asset {
+            info: AssetInfo::NativeToken {
+                denom: config.fee_denom,
+            },
+            amount: config.fee_amount,
+        };
+        msgs.push(CosmosMsg::Bank(BankMsg::Send {
+            to_address: request.user,
+            amount: vec![fee_asset.deduct_tax(&deps.querier)?],
+        }));
+    }
 
     // Remove request
     let mut state = read_state(deps.storage)?;
@@ -314,14 +335,15 @@ pub fn cancel_request(
 /// - Forward escrowed assets and call the target contract
 /// - Transfer execution fees to the executor
 /// - Fails if executor doesn't match
+/// - Request remains if it's recurring
 pub fn execute_request(
     deps: DepsMut,
     info: MessageInfo,
     id: u64,
 ) -> Result<Response, ContractError> {
     let config = read_config(deps.storage)?;
-
     let request = read_request(deps.storage, id)?;
+    let mut state = read_state(deps.storage)?;
 
     // Validate executor
     if !request.executor.is_empty() {
@@ -331,8 +353,18 @@ pub fn execute_request(
         }
     }
 
+    // If recurring request, deduct fee from the pool
+    if request.is_recurring {
+        let user = deps.api.addr_validate(&request.user)?;
+        let mut balance = read_recurring_fee(deps.storage, user.clone());
+        if balance < config.fee_amount {
+            return Err(ContractError::InsufficientRecurringFee {});
+        }
+        balance -= config.fee_amount;
+        store_recurring_fee(deps.storage, user, &balance)?;
+    }
+
     // Update current executing request id
-    let mut state = read_state(deps.storage)?;
     state.curr_executing_request_id = id;
     store_state(deps.storage, &state)?;
 
@@ -400,16 +432,108 @@ pub fn execute_request(
     });
 
     // Remove request
-    let mut state = read_state(deps.storage)?;
-    state.total_requests -= 1;
-    store_state(deps.storage, &state)?;
-
-    remove_request(deps.storage, id)?;
+    if !request.is_recurring {
+        let mut state = read_state(deps.storage)?;
+        state.total_requests -= 1;
+        store_state(deps.storage, &state)?;
+        remove_request(deps.storage, id)?;
+    }
 
     Ok(Response::new().add_submessages(msgs).add_attributes(vec![
         attr("action", "execute_request"),
         attr("id", id.to_string()),
     ]))
+}
+
+/// Deposit recurring fee
+/// - Fails `recurring_count` is invalid
+pub fn deposit_recurring_fee(
+    deps: DepsMut,
+    info: MessageInfo,
+    recurring_count: u64,
+) -> Result<Response, ContractError> {
+    let config = read_config(deps.storage)?;
+    let deposit_amount = config
+        .fee_amount
+        .checked_mul(Uint128::from(recurring_count))?;
+
+    // Check if `recurring_count` is zero
+    if recurring_count == 0 {
+        return Err(ContractError::InvalidRecurringCount {});
+    }
+
+    // Validate funds with `recurring_count`
+    match info.funds.iter().find(|x| x.denom == config.fee_denom) {
+        Some(coin) => {
+            if deposit_amount != coin.amount {
+                return Err(ContractError::InvalidRecurringCount {});
+            }
+        }
+        None => {
+            return Err(ContractError::InsufficientFee {});
+        }
+    }
+
+    // Update storage
+    let mut state = read_state(deps.storage)?;
+    let mut balance = read_recurring_fee(deps.storage, info.sender.clone());
+
+    state.total_recurring_fee += deposit_amount;
+    balance += deposit_amount;
+
+    store_state(deps.storage, &state)?;
+    store_recurring_fee(deps.storage, info.sender, &balance)?;
+
+    Ok(Response::new().add_attributes(vec![
+        attr("action", "deposit_recurring_fee"),
+        attr("recurring_count", recurring_count.to_string()),
+        attr("amount", deposit_amount.to_string()),
+    ]))
+}
+
+/// Withdraw recurring fee
+/// - Fails `recurring_count` is invalid
+pub fn withdraw_recurring_fee(
+    deps: DepsMut,
+    info: MessageInfo,
+    recurring_count: u64,
+) -> Result<Response, ContractError> {
+    let config = read_config(deps.storage)?;
+    let withdraw_amount = config
+        .fee_amount
+        .checked_mul(Uint128::from(recurring_count))?;
+
+    let mut state = read_state(deps.storage)?;
+    let mut balance = read_recurring_fee(deps.storage, info.sender.clone());
+
+    // Validate withdraw amount
+    if balance < withdraw_amount {
+        return Err(ContractError::InvalidRecurringCount {});
+    }
+
+    // Update state
+    balance -= withdraw_amount;
+    state.total_recurring_fee -= withdraw_amount;
+    store_state(deps.storage, &state)?;
+    store_recurring_fee(deps.storage, info.sender.clone(), &balance)?;
+
+    // Transfer asset
+    let withdraw_asset = Asset {
+        info: AssetInfo::NativeToken {
+            denom: config.fee_denom,
+        },
+        amount: withdraw_amount,
+    };
+    Ok(Response::new()
+        .add_message(BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: vec![withdraw_asset.deduct_tax(&deps.querier)?],
+        })
+        .add_attributes(vec![
+            attr("action", "withdraw_recurring_fee"),
+            attr("recurring_count", recurring_count.to_string()),
+            attr("amount", withdraw_amount.to_string()),
+        ]))
 }
 
 /// Process when we receive AUTO tokens for staking
@@ -683,6 +807,7 @@ pub fn query_request_info(deps: Deps, id: u64) -> StdResult<RequestInfoResponse>
             },
             amount: Uint128::zero(),
         },
+        is_recurring: false,
     });
     Ok(RequestInfoResponse { id, request: info })
 }

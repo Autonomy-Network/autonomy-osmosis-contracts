@@ -41,4 +41,10 @@ pub enum ContractError {
 
     #[error("Idx is out of bound")]
     IdxOutOfBound {},
+
+    #[error("Invalid recurring count")]
+    InvalidRecurringCount {},
+
+    #[error("Insufficient recurring fee")]
+    InsufficientRecurringFee {},
 }

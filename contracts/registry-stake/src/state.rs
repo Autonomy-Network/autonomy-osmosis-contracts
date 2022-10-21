@@ -14,6 +14,7 @@ const KEY_CONFIG: &[u8] = b"config";
 const PREFIX_KEY_REQUEST_INFO: &[u8] = b"request_info";
 const KEY_STATE: &[u8] = b"state";
 const PREFIX_KEY_STAKE_BALANCE: &[u8] = b"stake_balance";
+const PREFIX_KEY_RECURRING_BALANCE: &[u8] = b"recurring_balance";
 
 /// Protocol configuration
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
@@ -48,24 +49,25 @@ pub fn read_config(storage: &dyn Storage) -> StdResult<Config> {
 /// Current state of the registry and stakes
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
 pub struct State {
+    /// Registry
+
     /// Request Id of currently being executed
     pub curr_executing_request_id: u64,
-
     /// Id of the request will be created for next
     pub next_request_id: u64,
-
     /// Number of total requests in the queue
     pub total_requests: u64,
+    /// Total recurring fee amount
+    pub total_recurring_fee: Uint128,
+
+    /// Staking
 
     /// Total amount of staked AUTO
     pub total_staked: Uint128,
-
     /// Address list of all stakers
     pub stakes: Vec<String>,
-
     /// Last epoch for executor rotation
     pub last_epoch: u64,
-
     /// Address of executor in the last epoch
     pub executor: String,
 }
@@ -95,6 +97,9 @@ pub struct Request {
 
     /// Asset sent in advance
     pub input_asset: Asset,
+
+    /// Recurring request
+    pub is_recurring: bool,
 }
 
 pub fn read_request(storage: &dyn Storage, id: u64) -> StdResult<Request> {
@@ -159,4 +164,18 @@ pub fn read_balance(storage: &dyn Storage, addr: Addr) -> Uint128 {
 
 pub fn store_balance(storage: &mut dyn Storage, addr: Addr, amount: &Uint128) -> StdResult<()> {
     bucket::<Uint128>(storage, PREFIX_KEY_STAKE_BALANCE).save(addr.as_bytes(), amount)
+}
+
+pub fn read_recurring_fee(storage: &dyn Storage, addr: Addr) -> Uint128 {
+    bucket_read::<Uint128>(storage, PREFIX_KEY_RECURRING_BALANCE)
+        .load(addr.as_bytes())
+        .unwrap_or_default()
+}
+
+pub fn store_recurring_fee(
+    storage: &mut dyn Storage,
+    addr: Addr,
+    amount: &Uint128,
+) -> StdResult<()> {
+    bucket::<Uint128>(storage, PREFIX_KEY_RECURRING_BALANCE).save(addr.as_bytes(), amount)
 }
