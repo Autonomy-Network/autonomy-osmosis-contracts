@@ -37,6 +37,7 @@ When a new request is being created, its `executor` is set to the `executor of t
 Recurring request is not removed from the queue after execution in order to recur the request execution.
 Users should deposit their execution fees into the recurring fee pool. The balance in this pool is reduced every time the request is executed.
 So, when creating a recurring request, the user doesn't need to pay the execution fee.
+As for now, recurring requests don't have input assets for request execution.
 
 ##### Staking Functions
 
