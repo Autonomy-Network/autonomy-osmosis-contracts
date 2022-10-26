@@ -7,6 +7,7 @@
     "curr_executing_request_id",
     "next_request_id",
     "stakes_len",
+    "total_recurring_fee",
     "total_requests",
     "total_stake_amount"
   ],
@@ -17,14 +18,24 @@
       "minimum": 0.0
     },
     "next_request_id": {
+      "description": "Id of the request will be created for next",
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
     },
     "stakes_len": {
+      "description": "Lenght of stakes array",
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
+    },
+    "total_recurring_fee": {
+      "description": "Total recurring fee amount",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint128"
+        }
+      ]
     },
     "total_requests": {
       "type": "integer",
@@ -32,7 +43,12 @@
       "minimum": 0.0
     },
     "total_stake_amount": {
-      "$ref": "#/definitions/Uint128"
+      "description": "Total amount of staked AUTO",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint128"
+        }
+      ]
     }
   },
   "definitions": {

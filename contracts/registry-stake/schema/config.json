@@ -13,7 +13,7 @@
   ],
   "properties": {
     "auto": {
-      "description": "Auto token for executors",
+      "description": "AUTO token for executors",
       "allOf": [
         {
           "$ref": "#/definitions/AssetInfo"

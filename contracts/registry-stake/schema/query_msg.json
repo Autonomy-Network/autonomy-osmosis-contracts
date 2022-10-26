@@ -29,6 +29,27 @@
       "additionalProperties": false
     },
     {
+      "description": "Get recurring info of ther user",
+      "type": "object",
+      "required": [
+        "recurring_fees"
+      ],
+      "properties": {
+        "recurring_fees": {
+          "type": "object",
+          "required": [
+            "user"
+          ],
+          "properties": {
+            "user": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Get details of a single request",
       "type": "object",
       "required": [

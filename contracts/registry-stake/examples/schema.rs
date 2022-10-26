@@ -5,8 +5,8 @@ use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 use registry_stake::{
     msg::{
         CreateOrUpdateConfig, CreateRequestInfo, EpochInfoResponse, ExecuteMsg, InstantiateMsg,
-        QueryMsg, RequestInfoResponse, RequestsResponse, StakeAmountResponse, StakesResponse,
-        StateResponse,
+        QueryMsg, RecurringFeeAmountResponse, RequestInfoResponse, RequestsResponse,
+        StakeAmountResponse, StakesResponse, StateResponse,
     },
     state::{Config, State},
 };
@@ -24,6 +24,7 @@ fn main() {
     export_schema(&schema_for!(RequestsResponse), &out_dir);
     export_schema(&schema_for!(StateResponse), &out_dir);
     export_schema(&schema_for!(StakeAmountResponse), &out_dir);
+    export_schema(&schema_for!(RecurringFeeAmountResponse), &out_dir);
     export_schema(&schema_for!(StakesResponse), &out_dir);
     export_schema(&schema_for!(EpochInfoResponse), &out_dir);
     export_schema(&schema_for!(CreateOrUpdateConfig), &out_dir);

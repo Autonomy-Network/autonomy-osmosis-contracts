@@ -3,18 +3,36 @@
   "title": "CreateRequestInfo",
   "type": "object",
   "required": [
-    "input_asset",
+    "is_recurring",
     "msg",
     "target"
   ],
   "properties": {
     "input_asset": {
-      "$ref": "#/definitions/Asset"
+      "description": "Assets used for this call",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Asset"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "is_recurring": {
+      "description": "Is this recurring request?",
+      "type": "boolean"
     },
     "msg": {
-      "$ref": "#/definitions/Binary"
+      "description": "Msg for the target contract",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Binary"
+        }
+      ]
     },
     "target": {
+      "description": "Target contract to call for this request",
       "type": "string"
     }
   },

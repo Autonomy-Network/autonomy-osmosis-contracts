@@ -65,6 +65,7 @@
       "type": "object",
       "properties": {
         "auto": {
+          "description": "AUTO token for executors",
           "anyOf": [
             {
               "$ref": "#/definitions/AssetInfo"
@@ -75,6 +76,7 @@
           ]
         },
         "blocks_in_epoch": {
+          "description": "Blocks in a single epoch",
           "type": [
             "integer",
             "null"
@@ -83,6 +85,7 @@
           "minimum": 0.0
         },
         "fee_amount": {
+          "description": "Amount of request execution fee",
           "anyOf": [
             {
               "$ref": "#/definitions/Uint128"
@@ -93,18 +96,21 @@
           ]
         },
         "fee_denom": {
+          "description": "Asset denom of request execution fee",
           "type": [
             "string",
             "null"
           ]
         },
         "owner": {
+          "description": "Contract owner",
           "type": [
             "string",
             "null"
           ]
         },
         "stake_amount": {
+          "description": "Single stake amount",
           "anyOf": [
             {
               "$ref": "#/definitions/Uint128"

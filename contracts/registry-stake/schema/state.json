@@ -9,12 +9,13 @@
     "last_epoch",
     "next_request_id",
     "stakes",
+    "total_recurring_fee",
     "total_requests",
     "total_staked"
   ],
   "properties": {
     "curr_executing_request_id": {
-      "description": "Request Id of currently being executed",
+      "description": "Registry Request Id of currently being executed",
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
@@ -42,6 +43,14 @@
         "type": "string"
       }
     },
+    "total_recurring_fee": {
+      "description": "Total recurring fee amount",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint128"
+        }
+      ]
+    },
     "total_requests": {
       "description": "Number of total requests in the queue",
       "type": "integer",
@@ -49,7 +58,7 @@
       "minimum": 0.0
     },
     "total_staked": {
-      "description": "Number of stakers who wants to be an executor",
+      "description": "Staking Total amount of staked AUTO",
       "allOf": [
         {
           "$ref": "#/definitions/Uint128"

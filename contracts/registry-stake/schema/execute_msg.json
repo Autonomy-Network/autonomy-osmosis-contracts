@@ -24,7 +24,7 @@
       "additionalProperties": false
     },
     {
-      "description": "Create a new execution request",
+      "description": "Registry Create a new execution request",
       "type": "object",
       "required": [
         "create_request"
@@ -45,7 +45,7 @@
       "additionalProperties": false
     },
     {
-      "description": "Cancel a request",
+      "description": "Cancel a request with `id`",
       "type": "object",
       "required": [
         "cancel_request"
@@ -68,7 +68,7 @@
       "additionalProperties": false
     },
     {
-      "description": "Execute a request",
+      "description": "Execute a request with `id`",
       "type": "object",
       "required": [
         "execute_request"
@@ -91,7 +91,53 @@
       "additionalProperties": false
     },
     {
-      "description": "Implemention for cw20 receive msg, when staking",
+      "description": "Deposit into recurring fee pool",
+      "type": "object",
+      "required": [
+        "deposit_recurring_fee"
+      ],
+      "properties": {
+        "deposit_recurring_fee": {
+          "type": "object",
+          "required": [
+            "recurring_count"
+          ],
+          "properties": {
+            "recurring_count": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Withdraw from recurring fee pool",
+      "type": "object",
+      "required": [
+        "withdraw_recurring_fee"
+      ],
+      "properties": {
+        "withdraw_recurring_fee": {
+          "type": "object",
+          "required": [
+            "recurring_count"
+          ],
+          "properties": {
+            "recurring_count": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Staking Implemention for cw20 receive msg, when staking",
       "type": "object",
       "required": [
         "receive"
@@ -104,7 +150,7 @@
       "additionalProperties": false
     },
     {
-      "description": "Staking when execution fee is native asset",
+      "description": "Staking when execution fee is native asset `num_stakes` is the number of staking",
       "type": "object",
       "required": [
         "stake_denom"
@@ -127,7 +173,7 @@
       "additionalProperties": false
     },
     {
-      "description": "Unstake assets",
+      "description": "Unstake stakers of the caller at index array of `idxs`",
       "type": "object",
       "required": [
         "unstake"
@@ -252,6 +298,7 @@
       "type": "object",
       "properties": {
         "auto": {
+          "description": "AUTO token for executors",
           "anyOf": [
             {
               "$ref": "#/definitions/AssetInfo"
@@ -262,6 +309,7 @@
           ]
         },
         "blocks_in_epoch": {
+          "description": "Blocks in a single epoch",
           "type": [
             "integer",
             "null"
@@ -270,6 +318,7 @@
           "minimum": 0.0
         },
         "fee_amount": {
+          "description": "Amount of request execution fee",
           "anyOf": [
             {
               "$ref": "#/definitions/Uint128"
@@ -280,18 +329,21 @@
           ]
         },
         "fee_denom": {
+          "description": "Asset denom of request execution fee",
           "type": [
             "string",
             "null"
           ]
         },
         "owner": {
+          "description": "Contract owner",
           "type": [
             "string",
             "null"
           ]
         },
         "stake_amount": {
+          "description": "Single stake amount",
           "anyOf": [
             {
               "$ref": "#/definitions/Uint128"
@@ -306,18 +358,36 @@
     "CreateRequestInfo": {
       "type": "object",
       "required": [
-        "input_asset",
+        "is_recurring",
         "msg",
         "target"
       ],
       "properties": {
         "input_asset": {
-          "$ref": "#/definitions/Asset"
+          "description": "Assets used for this call",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Asset"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "is_recurring": {
+          "description": "Is this recurring request?",
+          "type": "boolean"
         },
         "msg": {
-          "$ref": "#/definitions/Binary"
+          "description": "Msg for the target contract",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
         },
         "target": {
+          "description": "Target contract to call for this request",
           "type": "string"
         }
       }

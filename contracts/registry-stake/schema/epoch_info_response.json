@@ -10,14 +10,17 @@
   ],
   "properties": {
     "cur_epoch": {
+      "description": "Current Epoch from current block timestamp",
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
     },
     "executor": {
+      "description": "Last updated executor",
       "type": "string"
     },
     "last_epoch": {
+      "description": "Epoch of last excutor update",
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
