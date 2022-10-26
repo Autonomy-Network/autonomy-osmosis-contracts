@@ -96,7 +96,7 @@ pub struct Request {
     pub msg: Binary,
 
     /// Asset sent in advance
-    pub input_asset: Asset,
+    pub input_asset: Option<Asset>,
 
     /// Recurring request
     pub is_recurring: bool,

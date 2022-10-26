@@ -47,7 +47,7 @@ pub struct CreateRequestInfo {
     pub msg: Binary,
 
     /// Assets used for this call
-    pub input_asset: Asset,
+    pub input_asset: Option<Asset>,
 
     /// Is this recurring request?
     pub is_recurring: bool,
@@ -99,6 +99,8 @@ pub enum QueryMsg {
     Config {},
     /// Get current state of registry
     State {},
+    /// Get recurring info of ther user
+    RecurringFees { user: String },
     /// Get details of a single request
     RequestInfo { id: u64 },
     /// Get many requests
@@ -123,6 +125,9 @@ pub struct StateResponse {
 
     // Count of total queued requests
     pub total_requests: u64,
+
+    /// Total recurring fee amount
+    pub total_recurring_fee: Uint128,
 
     /// Id of the request will be created for next
     pub next_request_id: u64,
@@ -158,6 +163,12 @@ pub struct EpochInfoResponse {
 
     /// Last updated executor
     pub executor: String,
+}
+
+/// Response for staked amount of a user
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
+pub struct RecurringFeeAmountResponse {
+    pub amount: Uint128,
 }
 
 /// Response for staked amount of a user

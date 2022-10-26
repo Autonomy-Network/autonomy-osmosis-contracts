@@ -15,8 +15,8 @@ use autonomy::types::OrderBy;
 use crate::error::ContractError;
 use crate::msg::{
     CreateOrUpdateConfig, CreateRequestInfo, Cw20HookMsg, EpochInfoResponse, ExecuteMsg,
-    InstantiateMsg, MigrateMsg, QueryMsg, RequestInfoResponse, RequestsResponse,
-    StakeAmountResponse, StakesResponse, StateResponse,
+    InstantiateMsg, MigrateMsg, QueryMsg, RecurringFeeAmountResponse, RequestInfoResponse,
+    RequestsResponse, StakeAmountResponse, StakesResponse, StateResponse,
 };
 use crate::state::{
     read_balance, read_config, read_recurring_fee, read_request, read_requests, read_state,
@@ -176,9 +176,9 @@ pub fn create_request(
     let mut msgs: Vec<CosmosMsg> = vec![];
     let mut funds = info.funds.clone();
 
-    // Funds can't be empty
-    if funds.is_empty() {
-        return Err(ContractError::InvalidInputAssets {});
+    // Recurring requests can't have input assets
+    if request_info.is_recurring && request_info.input_asset != None {
+        return Err(ContractError::NoInputAssetForRecurring { });
     }
 
     // If this is not recurring request, funds should contain execution fee
@@ -198,27 +198,29 @@ pub fn create_request(
     }
 
     // Check fund tokens will be used for request
-    match request_info.input_asset.clone().info {
-        AssetInfo::NativeToken { denom } => {
-            if let Some(asset_index) = funds.iter().position(|f| f.denom == denom) {
-                // Check if actual amount matches with amount passed by params
-                if funds[asset_index].amount < request_info.input_asset.amount {
+    if let Some(input_asset) = request_info.input_asset.clone() {
+        match input_asset.info {
+            AssetInfo::NativeToken { denom } => {
+                if let Some(asset_index) = funds.iter().position(|f| f.denom == denom) {
+                    // Check if actual amount matches with amount passed by params
+                    if funds[asset_index].amount < input_asset.amount {
+                        return Err(ContractError::InvalidInputAssets {});
+                    }
+                } else {
                     return Err(ContractError::InvalidInputAssets {});
                 }
-            } else {
-                return Err(ContractError::InvalidInputAssets {});
             }
-        }
-        AssetInfo::Token { contract_addr } => {
-            msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: contract_addr.to_string(),
-                msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
-                    owner: info.sender.to_string(),
-                    recipient: env.contract.address.to_string(),
-                    amount: request_info.input_asset.amount,
-                })?,
-                funds: vec![],
-            }));
+            AssetInfo::Token { contract_addr } => {
+                msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: contract_addr.to_string(),
+                    msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
+                        owner: info.sender.to_string(),
+                        recipient: env.contract.address.to_string(),
+                        amount: input_asset.amount,
+                    })?,
+                    funds: vec![],
+                }));
+            }
         }
     }
 
@@ -282,8 +284,7 @@ pub fn cancel_request(
     // Returun escrowed tokens
     let mut msgs: Vec<CosmosMsg> = vec![];
 
-    let input_asset = request.input_asset.clone();
-    if !input_asset.amount.is_zero() {
+    if let Some(input_asset) = request.input_asset.clone() {
         match input_asset.info {
             AssetInfo::NativeToken { denom: _ } => {
                 msgs.push(CosmosMsg::Bank(BankMsg::Send {
@@ -296,7 +297,7 @@ pub fn cancel_request(
                     contract_addr: contract_addr.to_string(),
                     msg: to_binary(&Cw20ExecuteMsg::Transfer {
                         recipient: request.user.to_string(),
-                        amount: request.input_asset.amount,
+                        amount: input_asset.amount,
                     })?,
                     funds: vec![],
                 }));
@@ -361,6 +362,7 @@ pub fn execute_request(
             return Err(ContractError::InsufficientRecurringFee {});
         }
         balance -= config.fee_amount;
+        state.total_recurring_fee -= config.fee_amount;
         store_recurring_fee(deps.storage, user, &balance)?;
     }
 
@@ -371,46 +373,47 @@ pub fn execute_request(
     // Forward escrowed assets and execute contract
     let mut msgs = vec![];
 
-    let input_asset = request.input_asset.clone();
-    match input_asset.info {
-        AssetInfo::NativeToken { denom: _ } => {
-            msgs.push(SubMsg {
-                id: 1,
-                msg: CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr: request.target.to_string(),
-                    funds: vec![input_asset.deduct_tax(&deps.querier)?],
-                    msg: request.msg,
-                }),
-                gas_limit: None,
-                reply_on: ReplyOn::Success,
-            });
-        }
-        AssetInfo::Token { contract_addr } => {
-            if !request.input_asset.amount.is_zero() {
+    if let Some(input_asset) = request.input_asset.clone() {
+        match input_asset.info {
+            AssetInfo::NativeToken { denom: _ } => {
                 msgs.push(SubMsg {
-                    id: 0,
+                    id: 1,
                     msg: CosmosMsg::Wasm(WasmMsg::Execute {
-                        contract_addr: contract_addr.to_string(),
-                        msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                            recipient: request.target.to_string(),
-                            amount: request.input_asset.amount,
-                        })?,
-                        funds: vec![],
+                        contract_addr: request.target.to_string(),
+                        funds: vec![input_asset.deduct_tax(&deps.querier)?],
+                        msg: request.msg,
                     }),
                     gas_limit: None,
-                    reply_on: ReplyOn::Never,
+                    reply_on: ReplyOn::Success,
                 });
             }
-            msgs.push(SubMsg {
-                id: 1,
-                msg: CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr: request.target.to_string(),
-                    funds: vec![],
-                    msg: request.msg,
-                }),
-                gas_limit: None,
-                reply_on: ReplyOn::Success,
-            });
+            AssetInfo::Token { contract_addr } => {
+                if !input_asset.amount.is_zero() {
+                    msgs.push(SubMsg {
+                        id: 0,
+                        msg: CosmosMsg::Wasm(WasmMsg::Execute {
+                            contract_addr: contract_addr.to_string(),
+                            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                                recipient: request.target.to_string(),
+                                amount: input_asset.amount,
+                            })?,
+                            funds: vec![],
+                        }),
+                        gas_limit: None,
+                        reply_on: ReplyOn::Never,
+                    });
+                }
+                msgs.push(SubMsg {
+                    id: 1,
+                    msg: CosmosMsg::Wasm(WasmMsg::Execute {
+                        contract_addr: request.target.to_string(),
+                        funds: vec![],
+                        msg: request.msg,
+                    }),
+                    gas_limit: None,
+                    reply_on: ReplyOn::Success,
+                });
+            }
         }
     }
 
@@ -782,6 +785,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
         QueryMsg::EpochInfo {} => Ok(to_binary(&query_epoch_info(deps, env)?)?),
 
+        QueryMsg::RecurringFees { user } => Ok(to_binary(&query_recurring_fees(deps, user)?)?),
+
         QueryMsg::StakeAmount { user } => Ok(to_binary(&query_stake_amount(deps, user)?)?),
 
         QueryMsg::Stakes { start, limit } => Ok(to_binary(&query_stakes(deps, start, limit)?)?),
@@ -801,12 +806,7 @@ pub fn query_request_info(deps: Deps, id: u64) -> StdResult<RequestInfoResponse>
         executor: zero_string(),
         target: zero_string(),
         msg: to_binary("")?,
-        input_asset: Asset {
-            info: AssetInfo::NativeToken {
-                denom: "uluna".to_string(),
-            },
-            amount: Uint128::zero(),
-        },
+        input_asset: None,
         is_recurring: false,
     });
     Ok(RequestInfoResponse { id, request: info })
@@ -846,6 +846,7 @@ pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
     let resp = StateResponse {
         curr_executing_request_id: state.curr_executing_request_id,
         total_requests: state.total_requests,
+        total_recurring_fee: state.total_recurring_fee,
         next_request_id: state.next_request_id,
         total_stake_amount: state.total_staked,
         stakes_len: state.stakes.len() as u64,
@@ -864,6 +865,14 @@ pub fn query_epoch_info(deps: Deps, env: Env) -> StdResult<EpochInfoResponse> {
         last_epoch: state.last_epoch,
         executor: state.executor,
     };
+
+    Ok(resp)
+}
+
+/// Return staked amount of the user
+pub fn query_recurring_fees(deps: Deps, user: String) -> StdResult<RecurringFeeAmountResponse> {
+    let amount = read_recurring_fee(deps.storage, deps.api.addr_validate(&user)?);
+    let resp = RecurringFeeAmountResponse { amount };
 
     Ok(resp)
 }

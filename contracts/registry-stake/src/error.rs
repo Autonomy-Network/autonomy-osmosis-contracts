@@ -18,6 +18,9 @@ pub enum ContractError {
     #[error("No executor")]
     NoExecutor {},
 
+    #[error("Recurring requests can't have input assets")]
+    NoInputAssetForRecurring {},
+
     #[error("Invalid input assets")]
     InvalidInputAssets {},
 
