@@ -78,7 +78,7 @@ Wrapper reverts if the output amount is not between `min` and `max`.
 
 ### Compile contracts
 
-Launch the docker for `rust-optimizer:0.12.8` and use beaker to build wasm contracts.
+Launch the docker for `workspace-optimizer:0.12.8` and use beaker to build wasm contracts.
 
 ```bash
 beaker wasm build

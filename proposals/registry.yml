@@ -1,33 +1,43 @@
 title: Upload Registry Contract of Autonomy Network
 description: |
-        ## Summary
+  This proposal aims to deploy the necessary code on-chain to deploy Autonomy Network as a base system to automate any on-chain action with any on-chain condition. Things are generally automated by using the Autonomy Registry in conjunction with a wrapper contract around some system - for example like a wrapper around the Osmosis DEX that allows for limits and stops on Osmosis. A 2nd simultaneous proposal will deploy this wrapper contract to add limits and stops to Osmosis.
 
-        The **Registry** has successfully gone through testnet and is now ready to launch onto the Osmosis mainnet.
+  - [CommonWealth](https://gov.osmosis.zone/discussion/6921-proposal-for-adding-limits-and-stops)
+  - [Source code](https://github.com/Autonomy-Network/autonomy-osmosis-contracts/tree/main/contracts/registry-stake)
 
-        Vote **YES** on this proposal if you want the bytecodes of registry contract (as part of Autonomy Network) to be put onto Osmosis.
-        Vote **NO** on this proposal if you do not want the bytecodes of registry contract (as part of Autonomy Network) to go on chain.
+  The binary is compiled at commit [ebc2299](https://github.com/Autonomy-Network/autonomy-osmosis-contracts/commit/ebc22996a335e8b76a706b44f7f143bdfa107863) using [workspace-optimizer](https://github.com/CosmWasm/rust-optimizer/tree/v0.12.8) v0.12.8.
+  Use the following command:
 
-        ### Repo
-        https://github.com/Autonomy-Network/autonomy-osmosis-contracts/tree/main/contracts/registry-stake
+  ```
+  docker run --rm -v "$(pwd)":/code \
+    --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
+    --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+    cosmwasm/workspace-optimizer:0.12.8
+  ```
 
-        Checksum of the contracts are following.
+  Checksum of the contracts are following.
 
-        ### Compiled
+  ```
+  # Intermediate
+  e2b17a2b851c7d7b34a7d9db007b4c3286350682bcc4d7e93ee40fe49467dbe5 ./target/wasm32-unknown-unknown/release/registry_stake.wasm
 
-        ```
-        # Intermediate
-        4e715bbf7fae205f74df243bcc9729bf7c7cb166e2dc0fa9b073e288728228b8 ./target/wasm32-unknown-unknown/release/registry_stake.wasm
+  # Optimized
+  4b8b2e9e04d7c80ac4b4727a151087b2459fcb9967434b2a275fde88590f887c registry_stake.wasm
+  ```
 
-        # Optimized
-        c3ffeb63ccc3f28d1983a5831945cdcc0b4293a1b42d5cf0588d8f6d9bd7cfd1 registry_stake.wasm
-        ```
+  We encourage voters to independently validate that the binary code proposed on-chain matches the Rust source code. The following command may be helpful:
 
-        ## About Autonomy Registry:
-        This proposal aims to deploy the necessary code on-chain to deploy Autonomy Network as a base system to automate any on-chain action with any on-chain condition. Things are generally automated by using the Autonomy Registry in conjunction with a wrapper contract around some system - for example like a wrapper around the Osmosis DEX that allows for limits and stops on Osmosis. A 2nd simultaneous proposal will deploy this wrapper contract to add limits and stops to Osmosis.
+  ```
+  osmosisd q gov proposal $id --output json \
+  | jq -r '.content.wasm_byte_code' \
+  | base64 -d \
+  | gzip -dc \
+  | sha256sum
+  ```
 
-        More info at https://gov.osmosis.zone/discussion/6921-proposal-for-adding-limits-and-stops
+  where $id is the id of this proposal.
 deposit: 125000000uosmo
 code:
-    repo:   https://github.com/Autonomy-Network/autonomy-osmosis-contracts/
-    rust_flags: -C link-arg=-s
-    roptimizer: workspace-optimizer:0.12.8
+  repo: https://github.com/Autonomy-Network/autonomy-osmosis-contracts/
+  rust_flags: -C link-arg=-s
+  roptimizer: workspace-optimizer:0.12.8
