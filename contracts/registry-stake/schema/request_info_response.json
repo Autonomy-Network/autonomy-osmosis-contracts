@@ -103,17 +103,12 @@
       "description": "Actual request struct",
       "type": "object",
       "required": [
-        "executor",
         "is_recurring",
         "msg",
         "target",
         "user"
       ],
       "properties": {
-        "executor": {
-          "description": "The executor who is gonna run this request.",
-          "type": "string"
-        },
         "input_asset": {
           "description": "Asset sent in advance",
           "anyOf": [
@@ -138,7 +133,7 @@
           ]
         },
         "target": {
-          "description": "Target contract.",
+          "description": "The executor who is gonna run this request. Target contract.",
           "type": "string"
         },
         "user": {

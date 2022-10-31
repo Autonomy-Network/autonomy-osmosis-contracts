@@ -87,7 +87,7 @@ pub struct Request {
     pub user: String,
 
     /// The executor who is gonna run this request.
-    pub executor: String,
+    // pub executor: String,
 
     /// Target contract.
     pub target: String,

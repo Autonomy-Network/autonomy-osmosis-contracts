@@ -100,7 +100,7 @@ pub fn execute(
 
         ExecuteMsg::CancelRequest { id } => cancel_request(deps, env, info, id),
 
-        ExecuteMsg::ExecuteRequest { id } => execute_request(deps, info, id),
+        ExecuteMsg::ExecuteRequest { id } => execute_request(deps, env, info, id),
 
         ExecuteMsg::DepositRecurringFee { recurring_count } => {
             deposit_recurring_fee(deps, info, recurring_count)
@@ -225,24 +225,19 @@ pub fn create_request(
     }
 
     // Update executor
-    let cur_epoch = env.block.height / config.blocks_in_epoch * config.blocks_in_epoch;
-    if cur_epoch != state.last_epoch {
-        _update_executor(&mut state, env.clone(), config.blocks_in_epoch);
+    // let cur_epoch = env.block.height / config.blocks_in_epoch * config.blocks_in_epoch;
+    // if cur_epoch != state.last_epoch {
+    //     _update_executor(&mut state, env.clone(), config.blocks_in_epoch);
 
-        // if state.executor == "" {
-        //     return Err(ContractError::NoExecutor { });
-        // }
-    }
+    //     // if state.executor == "" {
+    //     //     return Err(ContractError::NoExecutor { });
+    //     // }
+    // }
 
     // Create and save request struct
     let id = state.next_request_id;
     let request = Request {
         user: info.sender.to_string(),
-        executor: if request_info.is_recurring {
-            zero_string()
-        } else {
-            state.executor.to_string()
-        },
         target: target_addr.to_string(),
         msg: request_info.msg,
         input_asset: request_info.input_asset,
@@ -340,6 +335,7 @@ pub fn cancel_request(
 /// - Request remains if it's recurring
 pub fn execute_request(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     id: u64,
 ) -> Result<Response, ContractError> {
@@ -348,12 +344,30 @@ pub fn execute_request(
     let mut state = read_state(deps.storage)?;
 
     // Validate executor
-    if !request.executor.is_empty() {
-        let executor = deps.api.addr_validate(&request.executor)?;
+    // Update executor
+    let cur_epoch = env.block.height / config.blocks_in_epoch * config.blocks_in_epoch;
+    if cur_epoch != state.last_epoch {
+        return Err(ContractError::ExecutorNotUpdated { });
+
+        // _update_executor(&mut state, env, config.blocks_in_epoch);
+        // if state.executor == "" {
+        //     return Err(ContractError::NoExecutor { });
+        // }
+    }
+
+    if !state.executor.is_empty() {
+        let executor = deps.api.addr_validate(&state.executor)?;
         if executor != info.sender {
-            return Err(CommonError::Unauthorized {}.into());
+            return Err(ContractError::InvalidExecutor { });
         }
     }
+
+    // if !request.executor.is_empty() {
+    //     let executor = deps.api.addr_validate(&request.executor)?;
+    //     if executor != info.sender {
+    //        return Err(ContractError::InvalidExecutor { });
+    //     }
+    // }
 
     // If recurring request, deduct fee from the pool
     if request.is_recurring {
@@ -446,6 +460,7 @@ pub fn execute_request(
     Ok(Response::new().add_submessages(msgs).add_attributes(vec![
         attr("action", "execute_request"),
         attr("id", id.to_string()),
+        attr("executor", state.executor),
     ]))
 }
 
@@ -804,7 +819,7 @@ pub fn query_config(deps: Deps) -> StdResult<Config> {
 pub fn query_request_info(deps: Deps, id: u64) -> StdResult<RequestInfoResponse> {
     let info = read_request(deps.storage, id).unwrap_or(Request {
         user: zero_string(),
-        executor: zero_string(),
+        // executor: zero_string(),
         target: zero_string(),
         msg: to_binary("")?,
         input_asset: None,
