@@ -227,7 +227,7 @@ pub fn create_request(
     // Update executor
     let cur_epoch = env.block.height / config.blocks_in_epoch * config.blocks_in_epoch;
     if cur_epoch != state.last_epoch {
-        _update_executor(&mut state, env, config.blocks_in_epoch);
+        _update_executor(&mut state, env.clone(), config.blocks_in_epoch);
 
         // if state.executor == "" {
         //     return Err(ContractError::NoExecutor { });
@@ -247,6 +247,7 @@ pub fn create_request(
         msg: request_info.msg,
         input_asset: request_info.input_asset,
         is_recurring: request_info.is_recurring,
+        created_at: env.block.time.seconds(),
     };
 
     state.next_request_id += 1;
@@ -808,6 +809,7 @@ pub fn query_request_info(deps: Deps, id: u64) -> StdResult<RequestInfoResponse>
         msg: to_binary("")?,
         input_asset: None,
         is_recurring: false,
+        created_at: 0
     });
     Ok(RequestInfoResponse { id, request: info })
 }

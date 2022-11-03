@@ -100,6 +100,9 @@ pub struct Request {
 
     /// Recurring request
     pub is_recurring: bool,
+
+    /// Timestamp for creation
+    pub created_at: u64,
 }
 
 pub fn read_request(storage: &dyn Storage, id: u64) -> StdResult<Request> {
