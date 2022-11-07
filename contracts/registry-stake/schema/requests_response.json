@@ -100,16 +100,18 @@
       "description": "Actual request struct",
       "type": "object",
       "required": [
-        "executor",
+        "created_at",
         "is_recurring",
         "msg",
         "target",
         "user"
       ],
       "properties": {
-        "executor": {
-          "description": "The executor who is gonna run this request.",
-          "type": "string"
+        "created_at": {
+          "description": "Timestamp for creation",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
         },
         "input_asset": {
           "description": "Asset sent in advance",
@@ -135,7 +137,7 @@
           ]
         },
         "target": {
-          "description": "Target contract.",
+          "description": "The executor who is gonna run this request. Target contract.",
           "type": "string"
         },
         "user": {

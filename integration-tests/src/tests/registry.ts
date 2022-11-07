@@ -135,8 +135,6 @@ async function testManageRequests(
   const state0 = await registryClient1.state();
 
   // Create Request
-  await registryClient1.updateExecutor();
-
   const fee = coin(config.fee_amount, config.fee_denom);
   const requestInfo = {
     target: registry,
@@ -210,7 +208,6 @@ async function testExecuteRequests(
   const totalRequests0 = state0.total_requests;
 
   // 1. Create request
-  await registryClient.updateExecutor();
   let transferMsg = toEncodedBinary({
     transfer: {
       recipient: localosmosis.addresses.wallet2,
@@ -262,6 +259,7 @@ async function testExecuteRequests(
     },
     "auto"
   );
+  await registryClient.updateExecutor();
   await registryClient.executeRequest(
     {
       id: requestId,
@@ -357,7 +355,6 @@ async function testRecurringRequests(
   // Create request
   const totalRequests0 = state2.total_requests;
   const transferAmount = "100000";
-  await registryClient.updateExecutor();
   let transferMsg = toEncodedBinary({
     transfer: {
       recipient: localosmosis.addresses.wallet2,
@@ -407,6 +404,7 @@ async function testRecurringRequests(
     },
     "auto"
   );
+  await registryClient.updateExecutor();
   await registryClient.executeRequest(
     {
       id: requestId,
@@ -444,6 +442,7 @@ async function testRecurringRequests(
     },
     "auto"
   );
+  await registryClient.updateExecutor();
   await registryClient.executeRequest(
     {
       id: requestId,
@@ -468,6 +467,7 @@ async function testRecurringRequests(
     },
     "auto"
   );
+  await registryClient.updateExecutor();
   await expect(
     registryClient.executeRequest(
       {

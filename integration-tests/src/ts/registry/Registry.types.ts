@@ -162,7 +162,6 @@ export interface RequestInfoResponse {
   [k: string]: unknown;
 }
 export interface Request {
-  executor: string;
   input_asset?: Asset | null;
   is_recurring: boolean;
   msg: Binary;
