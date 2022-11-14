@@ -137,7 +137,7 @@
           ]
         },
         "target": {
-          "description": "The executor who is gonna run this request. Target contract.",
+          "description": "Target contract.",
           "type": "string"
         },
         "user": {

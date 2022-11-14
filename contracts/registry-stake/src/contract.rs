@@ -334,7 +334,6 @@ pub fn execute_request(
     let mut state = read_state(deps.storage)?;
 
     // Validate executor
-    // Update executor
     let cur_epoch = env.block.height / config.blocks_in_epoch * config.blocks_in_epoch;
     if cur_epoch != state.last_epoch {
         return Err(ContractError::ExecutorNotUpdated { });
