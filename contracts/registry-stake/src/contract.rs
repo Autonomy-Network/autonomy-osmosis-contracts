@@ -244,6 +244,12 @@ pub fn create_request(
     Ok(Response::new().add_messages(msgs).add_attributes(vec![
         attr("action", "create_request"),
         attr("id", id.to_string()),
+        attr("user", request.user),
+        attr("target", request.target),
+        attr("msg", request.msg.to_string()),
+        attr("asset", format!("{:?}", request.input_asset)),
+        attr("is_recurring", if request.is_recurring { "true" } else { "false" }),
+        attr("created_at", request.created_at.to_string()),
     ]))
 }
 
