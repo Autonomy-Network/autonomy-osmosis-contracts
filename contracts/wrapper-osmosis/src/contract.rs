@@ -4,18 +4,60 @@ use cosmwasm_std::{
     coins, entry_point, to_binary, BankMsg, CosmosMsg, DepsMut, Env, MessageInfo, Response,
     StdResult, Uint128, WasmMsg,
 };
+use cw2::{get_contract_version, set_contract_version};
 use osmo_bindings::{OsmosisMsg, OsmosisQuery, Step, Swap, SwapAmountWithLimit};
+use semver::Version;
 
 use crate::error::WrapperError;
-use crate::msg::{ExecuteMsg, InstantiateMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg};
 
+/// Contract name that is used for migration.
+const CONTRACT_NAME: &str = "autonomy-wrapper-osmosis";
+/// Contract version that is used for migration.
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// ## Description
+/// Creates a new contract with the specified parameters in the [`InstantiateMsg`].
+/// Returns a default object of type [`Response`] if the operation was successful,
+/// or a [`ContractError`] if the contract was not created.
+/// ## Params
+/// * **deps** is an object of type [`DepsMut`].
+///
+/// * **env** is an object of type [`Env`].
+///
+/// * **_info** is an object of type [`MessageInfo`].
+/// * **msg** is a message of type [`InstantiateMsg`] which contains the basic settings for creating the contract.
 #[entry_point]
 pub fn instantiate(
-    _deps: DepsMut<OsmosisQuery>,
+    deps: DepsMut<OsmosisQuery>,
     _env: Env,
     _info: MessageInfo,
     _msg: InstantiateMsg,
 ) -> StdResult<Response<OsmosisMsg>> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    Ok(Response::default())
+}
+
+/// ## Description
+/// Used for contract migration. Returns a default object of type [`Response`].
+/// ## Params
+/// * **_deps** is an object of type [`DepsMut`].
+///
+/// * **_env** is an object of type [`Env`].
+///
+/// * **_msg** is an object of type [`MigrateMsg`].
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, WrapperError> {
+    let version: Version = CONTRACT_VERSION.parse()?;
+    let storage_version: Version = get_contract_version(deps.storage)?.version.parse()?;
+
+    if storage_version < version {
+        set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+        // If state structure changed in any contract version in the way migration is needed, it
+        // should occur here
+    }
     Ok(Response::default())
 }
 

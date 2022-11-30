@@ -15,6 +15,9 @@ pub enum ContractError {
     #[error("{0}")]
     Overflow(#[from] OverflowError),
 
+    #[error("Semver parsing error: {0}")]
+    SemVer(String),
+
     #[error("No executor")]
     NoExecutor {},
 
@@ -56,4 +59,10 @@ pub enum ContractError {
 
     #[error("Insufficient recurring fee")]
     InsufficientRecurringFee {},
+}
+
+impl From<semver::Error> for ContractError {
+    fn from(err: semver::Error) -> Self {
+        Self::SemVer(err.to_string())
+    }
 }

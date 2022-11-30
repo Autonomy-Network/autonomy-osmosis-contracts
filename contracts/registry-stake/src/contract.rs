@@ -5,12 +5,14 @@ use cosmwasm_std::{
     attr, from_binary, to_binary, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env,
     MessageInfo, Reply, ReplyOn, Response, StdResult, SubMsg, SubMsgResult, Uint128, WasmMsg,
 };
+use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
 use autonomy::asset::{Asset, AssetInfo};
 use autonomy::error::CommonError;
 use autonomy::helper::{option_string_to_addr, zero_address, zero_string};
 use autonomy::types::OrderBy;
+use semver::Version;
 
 use crate::error::ContractError;
 use crate::msg::{
@@ -24,6 +26,22 @@ use crate::state::{
     Config, Request, State,
 };
 
+/// Contract name that is used for migration.
+const CONTRACT_NAME: &str = "autonomy-registry-stake";
+/// Contract version that is used for migration.
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// ## Description
+/// Creates a new contract with the specified parameters in the [`InstantiateMsg`].
+/// Returns a default object of type [`Response`] if the operation was successful,
+/// or a [`ContractError`] if the contract was not created.
+/// ## Params
+/// * **deps** is an object of type [`DepsMut`].
+///
+/// * **env** is an object of type [`Env`].
+///
+/// * **_info** is an object of type [`MessageInfo`].
+/// * **msg** is a message of type [`InstantiateMsg`] which contains the basic settings for creating the contract.
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -31,6 +49,8 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
     // Destructuring a struct’s fields into separate variables in order to force
     // compile error if we add more params
     let CreateOrUpdateConfig {
@@ -80,9 +100,26 @@ pub fn instantiate(
     Ok(Response::default())
 }
 
+/// ## Description
+/// Used for contract migration. Returns a default object of type [`Response`].
+/// ## Params
+/// * **_deps** is an object of type [`DepsMut`].
+///
+/// * **_env** is an object of type [`Env`].
+///
+/// * **_msg** is an object of type [`MigrateMsg`].
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    Ok(Response::new())
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let version: Version = CONTRACT_VERSION.parse()?;
+    let storage_version: Version = get_contract_version(deps.storage)?.version.parse()?;
+
+    if storage_version < version {
+        set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+        // If state structure changed in any contract version in the way migration is needed, it
+        // should occur here
+    }
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -178,7 +215,7 @@ pub fn create_request(
 
     // Recurring requests can't have input assets
     if request_info.is_recurring && request_info.input_asset != None {
-        return Err(ContractError::NoInputAssetForRecurring { });
+        return Err(ContractError::NoInputAssetForRecurring {});
     }
 
     // If this is not recurring request, funds should contain execution fee
@@ -248,7 +285,14 @@ pub fn create_request(
         attr("target", request.target),
         attr("msg", request.msg.to_string()),
         attr("asset", format!("{:?}", request.input_asset)),
-        attr("is_recurring", if request.is_recurring { "true" } else { "false" }),
+        attr(
+            "is_recurring",
+            if request.is_recurring {
+                "true"
+            } else {
+                "false"
+            },
+        ),
         attr("created_at", request.created_at.to_string()),
     ]))
 }
@@ -342,13 +386,13 @@ pub fn execute_request(
     // Validate executor
     let cur_epoch = env.block.height / config.blocks_in_epoch * config.blocks_in_epoch;
     if cur_epoch != state.last_epoch {
-        return Err(ContractError::ExecutorNotUpdated { });
+        return Err(ContractError::ExecutorNotUpdated {});
     }
 
     if !state.executor.is_empty() {
         let executor = deps.api.addr_validate(&state.executor)?;
         if executor != info.sender {
-            return Err(ContractError::InvalidExecutor { });
+            return Err(ContractError::InvalidExecutor {});
         }
     }
 
@@ -806,7 +850,7 @@ pub fn query_request_info(deps: Deps, id: u64) -> StdResult<RequestInfoResponse>
         msg: to_binary("")?,
         input_asset: None,
         is_recurring: false,
-        created_at: 0
+        created_at: 0,
     });
     Ok(RequestInfoResponse { id, request: info })
 }

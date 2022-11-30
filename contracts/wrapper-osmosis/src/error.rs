@@ -6,6 +6,9 @@ pub enum WrapperError {
     #[error("{0}")]
     Std(#[from] StdError),
 
+    #[error("Semver parsing error: {0}")]
+    SemVer(String),
+
     #[error("Permission denied: the sender must be the wrapper")]
     NotWrapperContract { expected: String, actual: String },
 
@@ -15,4 +18,10 @@ pub enum WrapperError {
         expected_max: Uint128,
         actual: Uint128,
     },
+}
+
+impl From<semver::Error> for WrapperError {
+    fn from(err: semver::Error) -> Self {
+        Self::SemVer(err.to_string())
+    }
 }
