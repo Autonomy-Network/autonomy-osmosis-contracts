@@ -187,14 +187,13 @@ pub fn update_config(
         blocks_in_epoch,
     } = new_config;
 
-    if auto.is_some() {
-        return Err(ContractError::UpdateAutoTokenError { });
+    if auto.is_some() || stake_amount.is_some() {
+        return Err(ContractError::UpdateConfigError { });
     }
 
     config.owner = option_string_to_addr(deps.api, owner, config.owner)?;
     config.fee_amount = fee_amount.unwrap_or(config.fee_amount);
     config.fee_denom = fee_denom.unwrap_or(config.fee_denom);
-    config.stake_amount = stake_amount.unwrap_or(config.stake_amount);
     config.blocks_in_epoch = blocks_in_epoch.unwrap_or(config.blocks_in_epoch);
 
     store_config(deps.storage, &config)?;
