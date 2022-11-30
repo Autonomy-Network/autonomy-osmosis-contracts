@@ -74,11 +74,15 @@ pub fn instantiate(
         return Err(CommonError::InstantiateParamsUnavailable {}.into());
     }
 
+    // Validator AUTO token
+    let auto = auto.unwrap();
+    auto.check(deps.api)?;
+
     let config = Config {
         owner: option_string_to_addr(deps.api, owner, zero_address())?,
         fee_amount: fee_amount.unwrap(),
         fee_denom: fee_denom.unwrap(),
-        auto: auto.unwrap(),
+        auto,
         stake_amount: stake_amount.unwrap(),
         blocks_in_epoch: blocks_in_epoch.unwrap(),
     };
