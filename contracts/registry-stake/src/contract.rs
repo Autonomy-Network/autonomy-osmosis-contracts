@@ -702,12 +702,12 @@ pub fn unstake(
     // Validate and remove stakes
     for idx in &idxs {
         let idx = *idx as usize;
+        if idx >= state.stakes.len() {
+            return Err(ContractError::IdxOutOfBound {});
+        }
         let addr = deps.api.addr_validate(&state.stakes[idx])?;
         if addr != info.sender {
             return Err(ContractError::IdxNotYou {});
-        }
-        if idx >= state.stakes.len() {
-            return Err(ContractError::IdxOutOfBound {});
         }
         state.stakes.swap_remove(idx);
     }
