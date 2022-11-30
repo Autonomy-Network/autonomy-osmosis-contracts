@@ -18,6 +18,9 @@ pub enum ContractError {
     #[error("Semver parsing error: {0}")]
     SemVer(String),
 
+    #[error("AUTO token can't be updated")]
+    UpdateAutoTokenError {},
+
     #[error("No executor")]
     NoExecutor {},
 
