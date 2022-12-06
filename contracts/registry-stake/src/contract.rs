@@ -12,6 +12,7 @@ use autonomy::asset::{Asset, AssetInfo};
 use autonomy::error::CommonError;
 use autonomy::helper::{option_string_to_addr, zero_address, zero_string};
 use autonomy::types::OrderBy;
+use cw_utils::must_pay;
 use semver::Version;
 
 use crate::error::ContractError;
@@ -188,7 +189,7 @@ pub fn update_config(
     } = new_config;
 
     if auto.is_some() || stake_amount.is_some() {
-        return Err(ContractError::UpdateConfigError { });
+        return Err(ContractError::UpdateConfigError {});
     }
 
     config.owner = option_string_to_addr(deps.api, owner, config.owner)?;
@@ -510,20 +511,8 @@ pub fn deposit_recurring_fee(
         .checked_mul(Uint128::from(recurring_count))?;
 
     // Check if `recurring_count` is zero
-    if recurring_count == 0 {
+    if recurring_count == 0 || deposit_amount != must_pay(&info, &config.fee_denom)? {
         return Err(ContractError::InvalidRecurringCount {});
-    }
-
-    // Validate funds with `recurring_count`
-    match info.funds.iter().find(|x| x.denom == config.fee_denom) {
-        Some(coin) => {
-            if deposit_amount != coin.amount {
-                return Err(ContractError::InvalidRecurringCount {});
-            }
-        }
-        None => {
-            return Err(ContractError::InsufficientFee {});
-        }
     }
 
     // Update storage
@@ -630,12 +619,7 @@ pub fn receive_denom(
     match config.auto {
         AssetInfo::Token { contract_addr: _ } => Err(CommonError::Unauthorized {}.into()),
         AssetInfo::NativeToken { denom } => {
-            let received_auto = info
-                .funds
-                .iter()
-                .find(|c| c.denom == denom)
-                .map(|c| c.amount)
-                .unwrap_or(Uint128::zero());
+            let received_auto = must_pay(&info, &denom)?;
             let staker = info.clone().sender;
             stake(deps, env, info, &staker, num_stakes, received_auto)
         }

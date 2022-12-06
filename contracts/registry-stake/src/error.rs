@@ -1,3 +1,4 @@
+use cw_utils::PaymentError;
 use thiserror::Error;
 
 use cosmwasm_std::{OverflowError, StdError};
@@ -17,6 +18,9 @@ pub enum ContractError {
 
     #[error("Semver parsing error: {0}")]
     SemVer(String),
+
+    #[error("PaymnetError: {0}")]
+    Payment(#[from] PaymentError),
 
     #[error("AUTO token or Stake amount can't be updated")]
     UpdateConfigError {},
