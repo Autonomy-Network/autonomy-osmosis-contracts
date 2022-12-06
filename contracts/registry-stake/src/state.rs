@@ -88,6 +88,7 @@ pub const STATE: Item<State> = Item::new("state");
 
 pub const STAKE_BALANCE: Map<&Addr, Uint128> = Map::new("stake_balance");
 pub const RECURRING_BALANCE: Map<&Addr, Uint128> = Map::new("recurring_balance");
+pub const BLACKLIST: Map<&Addr, String> = Map::new("blacklist");
 pub const REQUESTS: Map<u64, Request> = Map::new("requests");
 
 pub fn read_requests(

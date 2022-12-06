@@ -85,6 +85,13 @@ pub enum ExecuteMsg {
     Unstake { idxs: Vec<u64> },
     /// Update executor for current epoch
     UpdateExecutor {},
+
+    /// Black list
+
+    /// Add to blacklist
+    AddToBlacklist { addrs: Vec<String> },
+    /// Remove from blacklist
+    RemoveFromBlacklist { addrs: Vec<String> }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
@@ -119,6 +126,8 @@ pub enum QueryMsg {
     StakeAmount { user: String },
     /// Get array of staked addresses
     Stakes { start: u64, limit: u64 },
+    /// Get array of blacklisted addresses
+    Blacklist { },
 }
 
 /// Response for query registry state
@@ -185,4 +194,10 @@ pub struct StakeAmountResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
 pub struct StakesResponse {
     pub stakes: Vec<String>,
+}
+
+/// Response for staked list
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
+pub struct BlacklistResponse {
+    pub blacklist: Vec<String>,
 }

@@ -17,13 +17,13 @@ use semver::Version;
 
 use crate::error::ContractError;
 use crate::msg::{
-    CreateOrUpdateConfig, CreateRequestInfo, Cw20HookMsg, EpochInfoResponse, ExecuteMsg,
-    InstantiateMsg, MigrateMsg, QueryMsg, RecurringFeeAmountResponse, RequestInfoResponse,
-    RequestsResponse, StakeAmountResponse, StakesResponse, StateResponse,
+    BlacklistResponse, CreateOrUpdateConfig, CreateRequestInfo, Cw20HookMsg, EpochInfoResponse,
+    ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, RecurringFeeAmountResponse,
+    RequestInfoResponse, RequestsResponse, StakeAmountResponse, StakesResponse, StateResponse,
 };
 use crate::state::{
-    read_requests, Config, Request, State, ADMIN,
-    CONFIG, NEW_ADMIN, RECURRING_BALANCE, STAKE_BALANCE, STATE, REQUESTS,
+    read_requests, Config, Request, State, ADMIN, BLACKLIST, CONFIG, NEW_ADMIN, RECURRING_BALANCE,
+    REQUESTS, STAKE_BALANCE, STATE,
 };
 
 /// Contract name that is used for migration.
@@ -139,32 +139,28 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::ClaimAdmin {} => claim_admin(deps, env, info),
-
         ExecuteMsg::UpdateConfig { config } => update_config(deps, env, info, config),
 
         // Registry
         ExecuteMsg::CreateRequest { request_info } => create_request(deps, env, info, request_info),
-
         ExecuteMsg::CancelRequest { id } => cancel_request(deps, env, info, id),
-
         ExecuteMsg::ExecuteRequest { id } => execute_request(deps, env, info, id),
-
         ExecuteMsg::DepositRecurringFee { recurring_count } => {
             deposit_recurring_fee(deps, info, recurring_count)
         }
-
         ExecuteMsg::WithdrawRecurringFee { recurring_count } => {
             withdraw_recurring_fee(deps, info, recurring_count)
         }
 
         // Staking
         ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
-
         ExecuteMsg::StakeDenom { num_stakes } => receive_denom(deps, env, info, num_stakes),
-
         ExecuteMsg::Unstake { idxs } => unstake(deps, env, info, idxs),
-
         ExecuteMsg::UpdateExecutor {} => update_executor(deps, env),
+
+        // Blacklist
+        ExecuteMsg::AddToBlacklist { addrs } => add_to_blacklist(deps, env, info, addrs),
+        ExecuteMsg::RemoveFromBlacklist { addrs } => remove_from_blacklist(deps, env, info, addrs),
     }
 }
 
@@ -220,7 +216,9 @@ pub fn claim_admin(
     let new_admin = NEW_ADMIN.get(deps.as_ref())?;
     ADMIN.set(deps.branch(), new_admin)?;
 
-    Ok(Response::new().add_attribute("action", "update_config"))
+    Ok(Response::new()
+        .add_attribute("action", "claim_admin")
+        .add_attribute("new admin", info.sender))
 }
 
 /// Creates a new request
@@ -739,6 +737,42 @@ pub fn update_executor(deps: DepsMut, env: Env) -> Result<Response, ContractErro
     ]))
 }
 
+/// Claim as admin
+pub fn add_to_blacklist(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    addrs: Vec<String>,
+) -> Result<Response, ContractError> {
+    // Only admin can update blacklist
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+
+    for addr_str in addrs {
+        let addr = deps.api.addr_validate(&addr_str)?;
+        BLACKLIST.save(deps.storage, &addr, &addr_str)?;
+    }
+
+    Ok(Response::new().add_attribute("action", "add_to_blacklist"))
+}
+
+/// Claim as admin
+pub fn remove_from_blacklist(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    addrs: Vec<String>,
+) -> Result<Response, ContractError> {
+    // Only admin can update blacklist
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+
+    for addr_str in addrs {
+        let addr = deps.api.addr_validate(&addr_str)?;
+        BLACKLIST.remove(deps.storage, &addr);
+    }
+
+    Ok(Response::new().add_attribute("action", "remove_from_blacklist"))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
@@ -789,6 +823,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::StakeAmount { user } => Ok(to_binary(&query_stake_amount(deps, user)?)?),
 
         QueryMsg::Stakes { start, limit } => Ok(to_binary(&query_stakes(deps, start, limit)?)?),
+
+        QueryMsg::Blacklist {} => Ok(to_binary(&query_blacklist(deps)?)?),
     }
 }
 
@@ -900,5 +936,19 @@ pub fn query_stakes(deps: Deps, start: u64, limit: u64) -> StdResult<StakesRespo
 
     Ok(StakesResponse {
         stakes: state.stakes[start..end].to_vec(),
+    })
+}
+
+/// Return stakes of a range
+pub fn query_blacklist(deps: Deps) -> StdResult<BlacklistResponse> {
+    let addrs: StdResult<Vec<(Addr, String)>> = BLACKLIST
+        .range(deps.storage, None, None, OrderBy::Asc.into())
+        .collect();
+
+    let blacklist: StdResult<Vec<String>> =
+        addrs?.iter().map(|record| Ok(record.1.clone())).collect();
+
+    Ok(BlacklistResponse {
+        blacklist: blacklist?,
     })
 }
