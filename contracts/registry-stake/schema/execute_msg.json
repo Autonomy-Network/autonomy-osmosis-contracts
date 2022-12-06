@@ -3,6 +3,19 @@
   "title": "ExecuteMsg",
   "oneOf": [
     {
+      "description": "Claim Admin",
+      "type": "object",
+      "required": [
+        "claim_admin"
+      ],
+      "properties": {
+        "claim_admin": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Update Config",
       "type": "object",
       "required": [
@@ -297,6 +310,13 @@
     "CreateOrUpdateConfig": {
       "type": "object",
       "properties": {
+        "admin": {
+          "description": "Contract admin",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "auto": {
           "description": "AUTO token for executors",
           "anyOf": [
@@ -330,13 +350,6 @@
         },
         "fee_denom": {
           "description": "Asset denom of request execution fee",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "owner": {
-          "description": "Contract owner",
           "type": [
             "string",
             "null"

@@ -8,7 +8,6 @@
     "blocks_in_epoch",
     "fee_amount",
     "fee_denom",
-    "owner",
     "stake_amount"
   ],
   "properties": {
@@ -37,14 +36,6 @@
     "fee_denom": {
       "description": "Asset denom of request execution fee; we will limit to OSMO for osmosis",
       "type": "string"
-    },
-    "owner": {
-      "description": "Contract owner",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Addr"
-        }
-      ]
     },
     "stake_amount": {
       "description": "Single stake amount",

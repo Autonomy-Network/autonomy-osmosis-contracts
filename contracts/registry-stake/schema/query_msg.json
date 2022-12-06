@@ -3,6 +3,19 @@
   "title": "QueryMsg",
   "oneOf": [
     {
+      "description": "Get registry admin",
+      "type": "object",
+      "required": [
+        "admin"
+      ],
+      "properties": {
+        "admin": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Get registry config",
       "type": "object",
       "required": [

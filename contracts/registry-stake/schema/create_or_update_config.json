@@ -3,6 +3,13 @@
   "title": "CreateOrUpdateConfig",
   "type": "object",
   "properties": {
+    "admin": {
+      "description": "Contract admin",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "auto": {
       "description": "AUTO token for executors",
       "anyOf": [
@@ -36,13 +43,6 @@
     },
     "fee_denom": {
       "description": "Asset denom of request execution fee",
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "owner": {
-      "description": "Contract owner",
       "type": [
         "string",
         "null"

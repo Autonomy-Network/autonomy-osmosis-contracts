@@ -2,8 +2,8 @@
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    attr, from_binary, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Reply, ReplyOn, Response, StdResult, SubMsg, SubMsgResult, Uint128, WasmMsg,
+    attr, from_binary, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
+    ReplyOn, Response, StdResult, SubMsg, SubMsgResult, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -22,9 +22,8 @@ use crate::msg::{
     RequestsResponse, StakeAmountResponse, StakesResponse, StateResponse,
 };
 use crate::state::{
-    read_balance, read_config, read_recurring_fee, read_request, read_requests, read_state,
-    remove_request, store_balance, store_config, store_recurring_fee, store_request, store_state,
-    Config, Request, State, ADMIN, NEW_ADMIN,
+    read_requests, Config, Request, State, ADMIN,
+    CONFIG, NEW_ADMIN, RECURRING_BALANCE, STAKE_BALANCE, STATE, REQUESTS,
 };
 
 /// Contract name that is used for migration.
@@ -103,8 +102,8 @@ pub fn instantiate(
         total_recurring_fee: Uint128::zero(),
     };
 
-    store_config(deps.storage, &config)?;
-    store_state(deps.storage, &state)?;
+    CONFIG.save(deps.storage, &config)?;
+    STATE.save(deps.storage, &state)?;
 
     Ok(Response::default())
 }
@@ -176,7 +175,7 @@ pub fn update_config(
     info: MessageInfo,
     new_config: CreateOrUpdateConfig,
 ) -> Result<Response, ContractError> {
-    let mut config = read_config(deps.storage)?;
+    let mut config = CONFIG.load(deps.storage)?;
 
     // Only admin can update config
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
@@ -205,7 +204,7 @@ pub fn update_config(
     config.fee_denom = fee_denom.unwrap_or(config.fee_denom);
     config.blocks_in_epoch = blocks_in_epoch.unwrap_or(config.blocks_in_epoch);
 
-    store_config(deps.storage, &config)?;
+    CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::new().add_attribute("action", "update_config"))
 }
@@ -235,8 +234,8 @@ pub fn create_request(
     info: MessageInfo,
     request_info: CreateRequestInfo,
 ) -> Result<Response, ContractError> {
-    let config = read_config(deps.storage)?;
-    let mut state = read_state(deps.storage)?;
+    let config = CONFIG.load(deps.storage)?;
+    let mut state = STATE.load(deps.storage)?;
 
     let target_addr = deps.api.addr_validate(&request_info.target)?;
     let mut msgs: Vec<CosmosMsg> = vec![];
@@ -304,8 +303,8 @@ pub fn create_request(
     state.next_request_id += 1;
     state.total_requests += 1;
 
-    store_request(deps.storage, id, &request)?;
-    store_state(deps.storage, &state)?;
+    REQUESTS.save(deps.storage, id, &request)?;
+    STATE.save(deps.storage, &state)?;
 
     Ok(Response::new().add_messages(msgs).add_attributes(vec![
         attr("action", "create_request"),
@@ -336,9 +335,9 @@ pub fn cancel_request(
     info: MessageInfo,
     id: u64,
 ) -> Result<Response, ContractError> {
-    let config = read_config(deps.storage)?;
+    let config = CONFIG.load(deps.storage)?;
 
-    let request = read_request(deps.storage, id)?;
+    let request = REQUESTS.load(deps.storage, id)?;
 
     // Validate owner
     let request_owner = deps.api.addr_validate(request.user.as_str())?;
@@ -366,11 +365,11 @@ pub fn cancel_request(
     }
 
     // Remove request
-    let mut state = read_state(deps.storage)?;
+    let mut state = STATE.load(deps.storage)?;
     state.total_requests -= 1;
-    store_state(deps.storage, &state)?;
+    STATE.save(deps.storage, &state)?;
 
-    remove_request(deps.storage, id)?;
+    REQUESTS.remove(deps.storage, id);
 
     Ok(Response::new().add_messages(msgs).add_attributes(vec![
         attr("action", "cancel_request"),
@@ -389,9 +388,9 @@ pub fn execute_request(
     info: MessageInfo,
     id: u64,
 ) -> Result<Response, ContractError> {
-    let config = read_config(deps.storage)?;
-    let request = read_request(deps.storage, id)?;
-    let mut state = read_state(deps.storage)?;
+    let config = CONFIG.load(deps.storage)?;
+    let request = REQUESTS.load(deps.storage, id)?;
+    let mut state = STATE.load(deps.storage)?;
 
     // Validate executor
     let cur_epoch = env.block.height / config.blocks_in_epoch * config.blocks_in_epoch;
@@ -409,18 +408,20 @@ pub fn execute_request(
     // If recurring request, deduct fee from the pool
     if request.is_recurring {
         let user = deps.api.addr_validate(&request.user)?;
-        let mut balance = read_recurring_fee(deps.storage, user.clone());
+        let mut balance = RECURRING_BALANCE
+            .load(deps.storage, &user)
+            .unwrap_or_default();
         if balance < config.fee_amount {
             return Err(ContractError::InsufficientRecurringFee {});
         }
         balance -= config.fee_amount;
         state.total_recurring_fee -= config.fee_amount;
-        store_recurring_fee(deps.storage, user, &balance)?;
+        RECURRING_BALANCE.save(deps.storage, &user, &balance)?;
     }
 
     // Update current executing request id
     state.curr_executing_request_id = id;
-    store_state(deps.storage, &state)?;
+    STATE.save(deps.storage, &state)?;
 
     // Forward escrowed assets and execute contract
     let mut msgs = vec![];
@@ -431,7 +432,7 @@ pub fn execute_request(
             id: 0,
             msg: input_asset.into_msg(&deps.querier, target)?,
             gas_limit: None,
-            reply_on: ReplyOn::Success,
+            reply_on: ReplyOn::Never,
         });
         msgs.push(SubMsg {
             id: 1,
@@ -461,10 +462,10 @@ pub fn execute_request(
 
     // Remove request
     if !request.is_recurring {
-        let mut state = read_state(deps.storage)?;
+        let mut state = STATE.load(deps.storage)?;
         state.total_requests -= 1;
-        store_state(deps.storage, &state)?;
-        remove_request(deps.storage, id)?;
+        STATE.save(deps.storage, &state)?;
+        REQUESTS.remove(deps.storage, id);
     }
 
     Ok(Response::new().add_submessages(msgs).add_attributes(vec![
@@ -481,7 +482,7 @@ pub fn deposit_recurring_fee(
     info: MessageInfo,
     recurring_count: u64,
 ) -> Result<Response, ContractError> {
-    let config = read_config(deps.storage)?;
+    let config = CONFIG.load(deps.storage)?;
     let deposit_amount = config
         .fee_amount
         .checked_mul(Uint128::from(recurring_count))?;
@@ -492,14 +493,16 @@ pub fn deposit_recurring_fee(
     }
 
     // Update storage
-    let mut state = read_state(deps.storage)?;
-    let mut balance = read_recurring_fee(deps.storage, info.sender.clone());
+    let mut state = STATE.load(deps.storage)?;
+    let mut balance = RECURRING_BALANCE
+        .load(deps.storage, &info.sender)
+        .unwrap_or_default();
 
     state.total_recurring_fee += deposit_amount;
     balance += deposit_amount;
 
-    store_state(deps.storage, &state)?;
-    store_recurring_fee(deps.storage, info.sender, &balance)?;
+    STATE.save(deps.storage, &state)?;
+    RECURRING_BALANCE.save(deps.storage, &info.sender, &balance)?;
 
     Ok(Response::new().add_attributes(vec![
         attr("action", "deposit_recurring_fee"),
@@ -515,13 +518,15 @@ pub fn withdraw_recurring_fee(
     info: MessageInfo,
     recurring_count: u64,
 ) -> Result<Response, ContractError> {
-    let config = read_config(deps.storage)?;
+    let config = CONFIG.load(deps.storage)?;
     let withdraw_amount = config
         .fee_amount
         .checked_mul(Uint128::from(recurring_count))?;
 
-    let mut state = read_state(deps.storage)?;
-    let mut balance = read_recurring_fee(deps.storage, info.sender.clone());
+    let mut state = STATE.load(deps.storage)?;
+    let mut balance = RECURRING_BALANCE
+        .load(deps.storage, &info.sender)
+        .unwrap_or_default();
 
     // Validate withdraw amount
     if balance < withdraw_amount {
@@ -531,8 +536,8 @@ pub fn withdraw_recurring_fee(
     // Update state
     balance -= withdraw_amount;
     state.total_recurring_fee -= withdraw_amount;
-    store_state(deps.storage, &state)?;
-    store_recurring_fee(deps.storage, info.sender.clone(), &balance)?;
+    STATE.save(deps.storage, &state)?;
+    RECURRING_BALANCE.save(deps.storage, &info.sender, &balance)?;
 
     // Transfer asset
     let withdraw_asset = Asset {
@@ -557,7 +562,7 @@ pub fn receive_cw20(
     info: MessageInfo,
     cw20_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    let config = read_config(deps.storage)?;
+    let config = CONFIG.load(deps.storage)?;
 
     match from_binary(&cw20_msg.msg) {
         Ok(Cw20HookMsg::Stake { num_stakes }) => {
@@ -587,7 +592,7 @@ pub fn receive_denom(
     info: MessageInfo,
     num_stakes: u64,
 ) -> Result<Response, ContractError> {
-    let config = read_config(deps.storage)?;
+    let config = CONFIG.load(deps.storage)?;
 
     match config.auto {
         AssetInfo::Token { contract_addr: _ } => Err(CommonError::Unauthorized {}.into()),
@@ -611,7 +616,7 @@ pub fn stake(
     num_stakes: u64,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    let config = read_config(deps.storage)?;
+    let config = CONFIG.load(deps.storage)?;
 
     // Validate amount
     if config.stake_amount * Uint128::from(num_stakes) != amount {
@@ -619,9 +624,9 @@ pub fn stake(
     }
 
     // Update executor
-    let mut state = read_state(deps.storage)?;
+    let mut state = STATE.load(deps.storage)?;
     _update_executor(&mut state, env, config.blocks_in_epoch);
-    store_state(deps.storage, &state)?;
+    STATE.save(deps.storage, &state)?;
 
     // Update stakes array
     for _ in 0..num_stakes {
@@ -629,10 +634,10 @@ pub fn stake(
     }
 
     // Add amount to stake balance
-    let balance = read_balance(deps.storage, sender.clone()) + amount;
-    store_balance(deps.storage, sender.clone(), &balance)?;
+    let balance = STAKE_BALANCE.load(deps.storage, sender).unwrap_or_default() + amount;
+    STAKE_BALANCE.save(deps.storage, sender, &balance)?;
     state.total_staked += amount;
-    store_state(deps.storage, &state)?;
+    STATE.save(deps.storage, &state)?;
 
     Ok(Response::new().add_attributes(vec![
         attr("action", "stake"),
@@ -651,12 +656,12 @@ pub fn unstake(
     info: MessageInfo,
     idxs: Vec<u64>,
 ) -> Result<Response, ContractError> {
-    let config = read_config(deps.storage)?;
+    let config = CONFIG.load(deps.storage)?;
 
     // Update executor
-    let mut state = read_state(deps.storage)?;
+    let mut state = STATE.load(deps.storage)?;
     _update_executor(&mut state, env, config.blocks_in_epoch);
-    store_state(deps.storage, &state)?;
+    STATE.save(deps.storage, &state)?;
 
     // Validate and remove stakes
     for idx in &idxs {
@@ -673,10 +678,13 @@ pub fn unstake(
 
     // Update stake balance
     let amount = Uint128::from(idxs.len() as u64) * config.stake_amount;
-    let balance = read_balance(deps.storage, info.sender.clone()) - amount;
-    store_balance(deps.storage, info.sender.clone(), &balance)?;
+    let balance = STAKE_BALANCE
+        .load(deps.storage, &info.sender)
+        .unwrap_or_default()
+        - amount;
+    STAKE_BALANCE.save(deps.storage, &info.sender, &balance)?;
     state.total_staked -= amount;
-    store_state(deps.storage, &state)?;
+    STATE.save(deps.storage, &state)?;
 
     // Return assets
     let return_asset = Asset {
@@ -718,11 +726,11 @@ fn _update_executor(state: &mut State, env: Env, blocks_in_epoch: u64) {
 /// If not, decide current epoch and set the executor
 /// If nobody staked yet, then executor is set to empty string
 pub fn update_executor(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
-    let config = read_config(deps.storage)?;
+    let config = CONFIG.load(deps.storage)?;
 
-    let mut state = read_state(deps.storage)?;
+    let mut state = STATE.load(deps.storage)?;
     _update_executor(&mut state, env, config.blocks_in_epoch);
-    store_state(deps.storage, &state)?;
+    STATE.save(deps.storage, &state)?;
 
     Ok(Response::new().add_attributes(vec![
         attr("action", "update_executor"),
@@ -746,9 +754,9 @@ pub fn execute_reply(
     _env: Env,
     _msg: SubMsgResult,
 ) -> Result<Response, ContractError> {
-    let mut state = read_state(deps.storage)?;
+    let mut state = STATE.load(deps.storage)?;
     state.curr_executing_request_id = u64::MAX;
-    store_state(deps.storage, &state)?;
+    STATE.save(deps.storage, &state)?;
     Ok(Response::new().add_attributes(vec![attr("action", "finialize_execute")]))
 }
 
@@ -786,13 +794,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 /// Return config
 pub fn query_config(deps: Deps) -> StdResult<Config> {
-    let config = read_config(deps.storage)?;
+    let config = CONFIG.load(deps.storage)?;
     Ok(config)
 }
 
 /// Return info of reqeust with `id`, returns default value when not exists
 pub fn query_request_info(deps: Deps, id: u64) -> StdResult<RequestInfoResponse> {
-    let info = read_request(deps.storage, id).unwrap_or(Request {
+    let info = REQUESTS.load(deps.storage, id).unwrap_or(Request {
         user: zero_string(),
         target: zero_string(),
         msg: to_binary("")?,
@@ -833,7 +841,7 @@ pub fn query_requests(
 
 /// Return current state of requests and stakes
 pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
-    let state = read_state(deps.storage)?;
+    let state = STATE.load(deps.storage)?;
     let resp = StateResponse {
         curr_executing_request_id: state.curr_executing_request_id,
         total_requests: state.total_requests,
@@ -848,8 +856,8 @@ pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
 
 /// Return current epoch info
 pub fn query_epoch_info(deps: Deps, env: Env) -> StdResult<EpochInfoResponse> {
-    let state = read_state(deps.storage)?;
-    let config = read_config(deps.storage)?;
+    let state = STATE.load(deps.storage)?;
+    let config = CONFIG.load(deps.storage)?;
     let cur_epoch = env.block.height / config.blocks_in_epoch * config.blocks_in_epoch;
     let resp = EpochInfoResponse {
         cur_epoch,
@@ -862,7 +870,9 @@ pub fn query_epoch_info(deps: Deps, env: Env) -> StdResult<EpochInfoResponse> {
 
 /// Return staked amount of the user
 pub fn query_recurring_fees(deps: Deps, user: String) -> StdResult<RecurringFeeAmountResponse> {
-    let amount = read_recurring_fee(deps.storage, deps.api.addr_validate(&user)?);
+    let amount = RECURRING_BALANCE
+        .load(deps.storage, &deps.api.addr_validate(&user)?)
+        .unwrap_or_default();
     let resp = RecurringFeeAmountResponse { amount };
 
     Ok(resp)
@@ -870,7 +880,9 @@ pub fn query_recurring_fees(deps: Deps, user: String) -> StdResult<RecurringFeeA
 
 /// Return staked amount of the user
 pub fn query_stake_amount(deps: Deps, user: String) -> StdResult<StakeAmountResponse> {
-    let amount = read_balance(deps.storage, deps.api.addr_validate(&user)?);
+    let amount = STAKE_BALANCE
+        .load(deps.storage, &deps.api.addr_validate(&user)?)
+        .unwrap_or_default();
     let resp = StakeAmountResponse { amount };
 
     Ok(resp)
@@ -878,7 +890,7 @@ pub fn query_stake_amount(deps: Deps, user: String) -> StdResult<StakeAmountResp
 
 /// Return stakes of a range
 pub fn query_stakes(deps: Deps, start: u64, limit: u64) -> StdResult<StakesResponse> {
-    let state = read_state(deps.storage)?;
+    let state = STATE.load(deps.storage)?;
 
     let mut end = (start + limit) as usize;
     if end > state.stakes.len() {
