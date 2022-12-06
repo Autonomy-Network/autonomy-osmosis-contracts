@@ -6,9 +6,10 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { Coin, StdFee } from "@cosmjs/amino";
-import { AssetInfo, Addr, Uint128, Config, CreateOrUpdateConfig, Binary, CreateRequestInfo, Asset, EpochInfoResponse, ExecuteMsg, Cw20ReceiveMsg, InstantiateMsg, QueryMsg, OrderBy, RecurringFeeAmountResponse, RequestInfoResponse, Request, RequestsResponse, StakeAmountResponse, StakesResponse, StateResponse, State } from "./Registry.types";
+import { AssetInfo, Addr, Uint128, Config, CreateOrUpdateConfig, Binary, CreateRequestInfo, Asset, EpochInfoResponse, ExecuteMsg, Cw20ReceiveMsg, InstantiateMsg, QueryMsg, OrderBy, RecurringFeeAmountResponse, RequestInfoResponse, Request, RequestsResponse, StakeAmountResponse, StakesResponse, StateResponse, State, AdminResponse } from "./Registry.types";
 export interface RegistryReadOnlyInterface {
   contractAddress: string;
+  admin: () => Promise<AdminResponse>;
   config: () => Promise<Config>;
   state: () => Promise<StateResponse>;
   recurringFees: ({
@@ -51,6 +52,7 @@ export class RegistryQueryClient implements RegistryReadOnlyInterface {
   constructor(client: CosmWasmClient, contractAddress: string) {
     this.client = client;
     this.contractAddress = contractAddress;
+    this.admin = this.admin.bind(this);
     this.config = this.config.bind(this);
     this.state = this.state.bind(this);
     this.recurringFees = this.recurringFees.bind(this);
@@ -61,6 +63,11 @@ export class RegistryQueryClient implements RegistryReadOnlyInterface {
     this.stakes = this.stakes.bind(this);
   }
 
+  admin = async (): Promise<AdminResponse> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      admin: {}
+    });
+  };
   config = async (): Promise<Config> => {
     return this.client.queryContractSmart(this.contractAddress, {
       config: {}
@@ -144,6 +151,7 @@ export class RegistryQueryClient implements RegistryReadOnlyInterface {
 export interface RegistryInterface extends RegistryReadOnlyInterface {
   contractAddress: string;
   sender: string;
+  claimAdmin: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   updateConfig: ({
     config
   }: {
@@ -205,6 +213,7 @@ export class RegistryClient extends RegistryQueryClient implements RegistryInter
     this.client = client;
     this.sender = sender;
     this.contractAddress = contractAddress;
+    this.claimAdmin = this.claimAdmin.bind(this);
     this.updateConfig = this.updateConfig.bind(this);
     this.createRequest = this.createRequest.bind(this);
     this.cancelRequest = this.cancelRequest.bind(this);
@@ -217,6 +226,11 @@ export class RegistryClient extends RegistryQueryClient implements RegistryInter
     this.updateExecutor = this.updateExecutor.bind(this);
   }
 
+  claimAdmin = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
+    return await this.client.execute(this.sender, this.contractAddress, {
+      claim_admin: {}
+    }, fee, memo, funds);
+  };
   updateConfig = async ({
     config
   }: {

@@ -22,16 +22,15 @@ export interface Config {
   blocks_in_epoch: number;
   fee_amount: Uint128;
   fee_denom: string;
-  owner: Addr;
   stake_amount: Uint128;
   [k: string]: unknown;
 }
 export interface CreateOrUpdateConfig {
+  admin?: string | null;
   auto?: AssetInfo | null;
   blocks_in_epoch?: number | null;
   fee_amount?: Uint128 | null;
   fee_denom?: string | null;
-  owner?: string | null;
   stake_amount?: Uint128 | null;
   [k: string]: unknown;
 }
@@ -55,6 +54,10 @@ export interface EpochInfoResponse {
   [k: string]: unknown;
 }
 export type ExecuteMsg = {
+  claim_admin: {
+    [k: string]: unknown;
+  };
+} | {
   update_config: {
     config: CreateOrUpdateConfig;
     [k: string]: unknown;
@@ -111,6 +114,10 @@ export interface InstantiateMsg {
   [k: string]: unknown;
 }
 export type QueryMsg = {
+  admin: {
+    [k: string]: unknown;
+  };
+} | {
   config: {
     [k: string]: unknown;
   };
@@ -152,6 +159,10 @@ export type QueryMsg = {
   };
 };
 export type OrderBy = "asc" | "desc";
+export interface AdminResponse {
+  admin: string;
+  [k: string]: unknown;
+}
 export interface RecurringFeeAmountResponse {
   amount: Uint128;
   [k: string]: unknown;

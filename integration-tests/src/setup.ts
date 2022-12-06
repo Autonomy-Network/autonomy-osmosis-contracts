@@ -155,7 +155,7 @@ async function setup(
     blocks_in_epoch: 100,
     fee_amount: "1000",
     fee_denom: "uosmo",
-    owner: localosmosis.addresses.wallet1,
+    admin: localosmosis.addresses.wallet1,
     stake_amount: "10000",
   };
   const registryResult = await instantiateContract(
