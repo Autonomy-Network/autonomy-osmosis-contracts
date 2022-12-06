@@ -10,6 +10,11 @@ use serde::{Deserialize, Serialize};
 use cosmwasm_std::{Addr, Binary, StdResult, Storage, Uint128};
 use cosmwasm_storage::{bucket, bucket_read, singleton, singleton_read, ReadonlyBucket};
 
+use cw_controllers::{Admin};
+
+pub const ADMIN: Admin = Admin::new("admin");
+pub const NEW_ADMIN: Admin = Admin::new("new_admin");
+
 const KEY_CONFIG: &[u8] = b"config";
 const PREFIX_KEY_REQUEST_INFO: &[u8] = b"request_info";
 const KEY_STATE: &[u8] = b"state";
@@ -19,9 +24,6 @@ const PREFIX_KEY_RECURRING_BALANCE: &[u8] = b"recurring_balance";
 /// Protocol configuration
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
 pub struct Config {
-    /// Contract owner
-    pub owner: Addr,
-
     /// Amount of request execution fee
     pub fee_amount: Uint128,
 

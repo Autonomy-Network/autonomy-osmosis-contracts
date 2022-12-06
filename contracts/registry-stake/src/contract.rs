@@ -10,7 +10,7 @@ use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
 use autonomy::asset::{Asset, AssetInfo};
 use autonomy::error::CommonError;
-use autonomy::helper::{option_string_to_addr, zero_address, zero_string};
+use autonomy::helper::zero_string;
 use autonomy::types::OrderBy;
 use cw_utils::must_pay;
 use semver::Version;
@@ -24,7 +24,7 @@ use crate::msg::{
 use crate::state::{
     read_balance, read_config, read_recurring_fee, read_request, read_requests, read_state,
     remove_request, store_balance, store_config, store_recurring_fee, store_request, store_state,
-    Config, Request, State,
+    Config, Request, State, ADMIN, NEW_ADMIN,
 };
 
 /// Contract name that is used for migration.
@@ -45,7 +45,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// * **msg** is a message of type [`InstantiateMsg`] which contains the basic settings for creating the contract.
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
@@ -55,7 +55,7 @@ pub fn instantiate(
     // Destructuring a struct’s fields into separate variables in order to force
     // compile error if we add more params
     let CreateOrUpdateConfig {
-        owner,
+        admin,
         fee_amount,
         fee_denom,
         auto,
@@ -64,7 +64,7 @@ pub fn instantiate(
     } = msg.config;
 
     // All fields should be available
-    let available = owner.is_some()
+    let available = admin.is_some()
         && fee_amount.is_some()
         && fee_denom.is_some()
         && auto.is_some()
@@ -79,8 +79,12 @@ pub fn instantiate(
     let auto = auto.unwrap();
     auto.check(deps.api)?;
 
+    let admin_addr = admin
+        .map(|admin| deps.api.addr_validate(&admin))
+        .transpose()?;
+    ADMIN.set(deps.branch(), admin_addr)?;
+
     let config = Config {
-        owner: option_string_to_addr(deps.api, owner, zero_address())?,
         fee_amount: fee_amount.unwrap(),
         fee_denom: fee_denom.unwrap(),
         auto,
@@ -135,9 +139,11 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        // Registry
+        ExecuteMsg::ClaimAdmin {} => claim_admin(deps, env, info),
+
         ExecuteMsg::UpdateConfig { config } => update_config(deps, env, info, config),
 
+        // Registry
         ExecuteMsg::CreateRequest { request_info } => create_request(deps, env, info, request_info),
 
         ExecuteMsg::CancelRequest { id } => cancel_request(deps, env, info, id),
@@ -165,22 +171,20 @@ pub fn execute(
 
 /// Update configuration
 pub fn update_config(
-    deps: DepsMut,
+    mut deps: DepsMut,
     _env: Env,
     info: MessageInfo,
     new_config: CreateOrUpdateConfig,
 ) -> Result<Response, ContractError> {
     let mut config = read_config(deps.storage)?;
 
-    // Only owner can update config
-    if info.sender != config.owner {
-        return Err(CommonError::Unauthorized {}.into());
-    }
+    // Only admin can update config
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     // Destructuring a struct’s fields into separate variables in order to force
     // compile error if we add more params
     let CreateOrUpdateConfig {
-        owner,
+        admin,
         fee_amount,
         fee_denom,
         auto,
@@ -192,12 +196,30 @@ pub fn update_config(
         return Err(ContractError::UpdateConfigError {});
     }
 
-    config.owner = option_string_to_addr(deps.api, owner, config.owner)?;
+    let admin_addr = admin
+        .map(|admin| deps.api.addr_validate(&admin))
+        .transpose()?;
+    NEW_ADMIN.set(deps.branch(), admin_addr)?;
+
     config.fee_amount = fee_amount.unwrap_or(config.fee_amount);
     config.fee_denom = fee_denom.unwrap_or(config.fee_denom);
     config.blocks_in_epoch = blocks_in_epoch.unwrap_or(config.blocks_in_epoch);
 
     store_config(deps.storage, &config)?;
+
+    Ok(Response::new().add_attribute("action", "update_config"))
+}
+
+/// Claim as admin
+pub fn claim_admin(
+    mut deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
+    // Only admin can update config
+    NEW_ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+    let new_admin = NEW_ADMIN.get(deps.as_ref())?;
+    ADMIN.set(deps.branch(), new_admin)?;
 
     Ok(Response::new().add_attribute("action", "update_config"))
 }
@@ -799,6 +821,8 @@ pub fn execute_reply(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
+        QueryMsg::Admin {} => to_binary(&ADMIN.query_admin(deps)?),
+
         QueryMsg::Config {} => Ok(to_binary(&query_config(deps)?)?),
 
         QueryMsg::RequestInfo { id } => Ok(to_binary(&query_request_info(deps, id)?)?),

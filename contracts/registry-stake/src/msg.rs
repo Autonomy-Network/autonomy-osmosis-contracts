@@ -11,8 +11,8 @@ use crate::state::Request;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
 pub struct CreateOrUpdateConfig {
-    /// Contract owner
-    pub owner: Option<String>,
+    /// Contract admin
+    pub admin: Option<String>,
 
     /// Amount of request execution fee
     pub fee_amount: Option<Uint128>,
@@ -56,6 +56,8 @@ pub struct CreateRequestInfo {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    /// Claim Admin
+    ClaimAdmin { },
     /// Update Config
     UpdateConfig { config: CreateOrUpdateConfig },
 
@@ -95,6 +97,8 @@ pub enum Cw20HookMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    /// Get registry admin
+    Admin {},
     /// Get registry config
     Config {},
     /// Get current state of registry
