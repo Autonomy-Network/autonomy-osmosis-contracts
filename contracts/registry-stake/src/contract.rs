@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    attr, from_binary, to_binary, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env,
+    attr, from_binary, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env,
     MessageInfo, Reply, ReplyOn, Response, StdResult, SubMsg, SubMsgResult, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
@@ -347,27 +347,11 @@ pub fn cancel_request(
     }
 
     // Returun escrowed tokens
+    let recipient = deps.api.addr_validate(&request.user)?;
     let mut msgs: Vec<CosmosMsg> = vec![];
 
-    if let Some(input_asset) = request.input_asset.clone() {
-        match input_asset.info {
-            AssetInfo::NativeToken { denom: _ } => {
-                msgs.push(CosmosMsg::Bank(BankMsg::Send {
-                    to_address: request.user.to_string(),
-                    amount: vec![input_asset.deduct_tax(&deps.querier)?],
-                }));
-            }
-            AssetInfo::Token { contract_addr } => {
-                msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr: contract_addr.to_string(),
-                    msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                        recipient: request.user.to_string(),
-                        amount: input_asset.amount,
-                    })?,
-                    funds: vec![],
-                }));
-            }
-        }
+    if let Some(input_asset) = request.input_asset {
+        msgs.push(input_asset.into_msg(&deps.querier, recipient.clone())?);
     }
 
     // Return fee asset if not recurring request
@@ -378,10 +362,7 @@ pub fn cancel_request(
             },
             amount: config.fee_amount,
         };
-        msgs.push(CosmosMsg::Bank(BankMsg::Send {
-            to_address: request.user,
-            amount: vec![fee_asset.deduct_tax(&deps.querier)?],
-        }));
+        msgs.push(fee_asset.into_msg(&deps.querier, recipient)?);
     }
 
     // Remove request
@@ -445,47 +426,23 @@ pub fn execute_request(
     let mut msgs = vec![];
 
     if let Some(input_asset) = request.input_asset.clone() {
-        match input_asset.info {
-            AssetInfo::NativeToken { denom: _ } => {
-                msgs.push(SubMsg {
-                    id: 1,
-                    msg: CosmosMsg::Wasm(WasmMsg::Execute {
-                        contract_addr: request.target.to_string(),
-                        funds: vec![input_asset.deduct_tax(&deps.querier)?],
-                        msg: request.msg,
-                    }),
-                    gas_limit: None,
-                    reply_on: ReplyOn::Success,
-                });
-            }
-            AssetInfo::Token { contract_addr } => {
-                if !input_asset.amount.is_zero() {
-                    msgs.push(SubMsg {
-                        id: 0,
-                        msg: CosmosMsg::Wasm(WasmMsg::Execute {
-                            contract_addr: contract_addr.to_string(),
-                            msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                                recipient: request.target.to_string(),
-                                amount: input_asset.amount,
-                            })?,
-                            funds: vec![],
-                        }),
-                        gas_limit: None,
-                        reply_on: ReplyOn::Never,
-                    });
-                }
-                msgs.push(SubMsg {
-                    id: 1,
-                    msg: CosmosMsg::Wasm(WasmMsg::Execute {
-                        contract_addr: request.target.to_string(),
-                        funds: vec![],
-                        msg: request.msg,
-                    }),
-                    gas_limit: None,
-                    reply_on: ReplyOn::Success,
-                });
-            }
-        }
+        let target = deps.api.addr_validate(&request.target)?;
+        msgs.push(SubMsg {
+            id: 0,
+            msg: input_asset.into_msg(&deps.querier, target)?,
+            gas_limit: None,
+            reply_on: ReplyOn::Success,
+        });
+        msgs.push(SubMsg {
+            id: 1,
+            msg: CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: request.target.to_string(),
+                funds: vec![],
+                msg: request.msg,
+            }),
+            gas_limit: None,
+            reply_on: ReplyOn::Success,
+        });
     }
 
     // Transfer fee to executor
@@ -497,10 +454,7 @@ pub fn execute_request(
     };
     msgs.push(SubMsg {
         id: 0,
-        msg: CosmosMsg::Bank(BankMsg::Send {
-            to_address: info.sender.to_string(),
-            amount: vec![fee_asset.deduct_tax(&deps.querier)?],
-        }),
+        msg: fee_asset.into_msg(&deps.querier, info.sender)?,
         gas_limit: None,
         reply_on: ReplyOn::Never,
     });
@@ -588,10 +542,7 @@ pub fn withdraw_recurring_fee(
         amount: withdraw_amount,
     };
     Ok(Response::new()
-        .add_message(BankMsg::Send {
-            to_address: info.sender.to_string(),
-            amount: vec![withdraw_asset.deduct_tax(&deps.querier)?],
-        })
+        .add_message(withdraw_asset.into_msg(&deps.querier, info.sender)?)
         .add_attributes(vec![
             attr("action", "withdraw_recurring_fee"),
             attr("recurring_count", recurring_count.to_string()),
@@ -728,35 +679,18 @@ pub fn unstake(
     store_state(deps.storage, &state)?;
 
     // Return assets
-    let mut msgs: Vec<CosmosMsg> = vec![];
-    match config.auto {
-        AssetInfo::Token { contract_addr: _ } => {
-            msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: config.auto.to_string(),
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: info.sender.to_string(),
-                    amount,
-                })?,
-                funds: vec![],
-            }));
-        }
-        AssetInfo::NativeToken { denom } => {
-            let asset = Asset {
-                info: AssetInfo::NativeToken { denom },
-                amount,
-            };
-            msgs.push(CosmosMsg::Bank(BankMsg::Send {
-                to_address: info.sender.to_string(),
-                amount: vec![asset.deduct_tax(&deps.querier)?],
-            }));
-        }
-    }
+    let return_asset = Asset {
+        info: config.auto,
+        amount,
+    };
 
-    Ok(Response::new().add_messages(msgs).add_attributes(vec![
-        attr("action", "unstake"),
-        attr("user", info.sender),
-        attr("count", idxs.len().to_string()),
-    ]))
+    Ok(Response::new()
+        .add_message(return_asset.into_msg(&deps.querier, info.sender.clone())?)
+        .add_attributes(vec![
+            attr("action", "unstake"),
+            attr("user", info.sender),
+            attr("count", idxs.len().to_string()),
+        ]))
 }
 
 /// Util fcn for executor update
