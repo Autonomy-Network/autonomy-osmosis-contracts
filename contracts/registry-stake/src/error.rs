@@ -6,6 +6,8 @@ use cosmwasm_std::{OverflowError, StdError};
 
 use autonomy::error::CommonError;
 
+/// ## Description
+/// This enum describes registry contract errors!
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]

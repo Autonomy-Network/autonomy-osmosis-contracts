@@ -38,7 +38,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// ## Params
 /// * **deps** is an object of type [`DepsMut`].
 ///
-/// * **env** is an object of type [`Env`].
+/// * **_env** is an object of type [`Env`].
 ///
 /// * **_info** is an object of type [`MessageInfo`].
 /// * **msg** is a message of type [`InstantiateMsg`] which contains the basic settings for creating the contract.
@@ -111,7 +111,7 @@ pub fn instantiate(
 /// ## Description
 /// Used for contract migration. Returns a default object of type [`Response`].
 /// ## Params
-/// * **_deps** is an object of type [`DepsMut`].
+/// * **deps** is an object of type [`DepsMut`].
 ///
 /// * **_env** is an object of type [`Env`].
 ///
@@ -130,6 +130,17 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     Ok(Response::default())
 }
 
+/// ## Description
+/// Exposes all the execute functions available in the contract.
+///
+/// ## Params
+/// * **deps** is an object of type [`Deps`].
+///
+/// * **env** is an object of type [`Env`].
+///
+/// * **info** is an object of type [`MessageInfo`].
+///
+/// * **msg** is an object of type [`ExecuteMsg`].
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
@@ -164,7 +175,20 @@ pub fn execute(
     }
 }
 
-/// Update configuration
+/// ## Description
+/// Updates general contract settings. Returns a [`ContractError`] on failure.
+///
+/// ## Params
+/// * **deps** is an object of type [`DepsMut`].
+///
+/// * **_env** is an object of type [`Env`].
+///
+/// * **info** is an object of type [`MessageInfo`].
+///
+/// * **new_config** is an object of type [`CreateOrUpdateConfig`] that contains the parameters to update.
+///
+/// ## Executor
+/// Only the admin can execute this.
 pub fn update_config(
     mut deps: DepsMut,
     _env: Env,
@@ -205,7 +229,18 @@ pub fn update_config(
     Ok(Response::new().add_attribute("action", "update_config"))
 }
 
-/// Claim as admin
+/// ## Description
+/// Take the admin permission of the contract. Returns a [`ContractError`] on failure.
+///
+/// ## Params
+/// * **deps** is an object of type [`DepsMut`].
+///
+/// * **_env** is an object of type [`Env`].
+///
+/// * **info** is an object of type [`MessageInfo`].
+///
+/// ## Executor
+/// Only the proposed admin can execute this.
 pub fn claim_admin(
     mut deps: DepsMut,
     _env: Env,
@@ -221,11 +256,21 @@ pub fn claim_admin(
         .add_attribute("new admin", info.sender))
 }
 
+/// ## Description
 /// Creates a new request
-/// - Funds should cover the execution fee and the asset for the request execution
-/// - Executor for the current epoch is set for this request
+/// * Funds should cover the execution fee and the asset for the request execution
+/// * Executor for the current epoch is set for this request
 ///   if there's no executor, anyone can execute the request
-/// - Request Id increases from zero by one
+/// * Request Id increases from zero by one
+///
+/// ## Params
+/// * **deps** is an object of type [`DepsMut`].
+///
+/// * **env** is an object of type [`Env`].
+///
+/// * **info** is an object of type [`MessageInfo`].
+///
+/// * **request_info** is an object of type [`CreateRequestInfo`].
 pub fn create_request(
     deps: DepsMut,
     env: Env,
@@ -323,10 +368,23 @@ pub fn create_request(
     ]))
 }
 
-/// Cancel the request with `id`
-/// - Return the escrowed assets for the request execution
-/// - Return execution fee
-/// - Remove request from the storage
+/// ## Description
+/// Cancel the request with [`id`]. Returns a [`ContractError`] on failure.
+/// * Return the escrowed assets for the request execution.
+/// * Return execution fee.
+/// * Remove request from the storage.
+///
+/// ## Params
+/// * **deps** is an object of type [`DepsMut`].
+///
+/// * **_env** is an object of type [`Env`].
+///
+/// * **info** is an object of type [`MessageInfo`].
+///
+/// * **id** is the request id, which an object of type [`u64`].
+///
+/// ## Executor
+/// Only the owner of the request can execute this.
 pub fn cancel_request(
     deps: DepsMut,
     _env: Env,
@@ -375,11 +433,24 @@ pub fn cancel_request(
     ]))
 }
 
-/// Execute request with `id`
-/// - Forward escrowed assets and call the target contract
-/// - Transfer execution fees to the executor
-/// - Fails if executor doesn't match
-/// - Request remains if it's recurring
+/// ## Description
+/// Execute request with [`id`]. Returns a [`ContractError`] on failure.
+/// * Forward escrowed assets and call the target contract.
+/// * Transfer execution fees to the executor.
+/// * Fails if executor doesn't match.
+/// * Request remains if it's recurring.
+///
+/// ## Params
+/// * **deps** is an object of type [`DepsMut`].
+///
+/// * **env** is an object of type [`Env`].
+///
+/// * **info** is an object of type [`MessageInfo`].
+///
+/// * **id** is the request id, which an object of type [`u64`].
+///
+/// ## Executor
+/// Only the excutor of the current epoch can execute this.
 pub fn execute_request(
     deps: DepsMut,
     env: Env,
@@ -473,8 +544,17 @@ pub fn execute_request(
     ]))
 }
 
-/// Deposit recurring fee
-/// - Fails `recurring_count` is invalid
+/// ## Description
+/// Deposit recurring fee. Returns a [`ContractError`] on failure.
+/// * Fails [`recurring_count`] is invalid.
+///
+/// ## Params
+/// * **deps** is an object of type [`DepsMut`].
+///
+/// * **info** is an object of type [`MessageInfo`].
+///
+/// * **recurring_count** is count of recurring, defines the deposit amount
+/// * it is an object of type [`u64`].
 pub fn deposit_recurring_fee(
     deps: DepsMut,
     info: MessageInfo,
@@ -509,8 +589,17 @@ pub fn deposit_recurring_fee(
     ]))
 }
 
-/// Withdraw recurring fee
-/// - Fails `recurring_count` is invalid
+/// ## Description
+/// Withdraw recurring fee. Returns a [`ContractError`] on failure.
+/// * Fails [`recurring_count`] is invalid.
+///
+/// ## Params
+/// * **deps** is an object of type [`DepsMut`].
+///
+/// * **info** is an object of type [`MessageInfo`].
+///
+/// * **recurring_count** is count of recurring, defines the deposit amount
+/// * it is an object of type [`u64`].
 pub fn withdraw_recurring_fee(
     deps: DepsMut,
     info: MessageInfo,
@@ -553,7 +642,17 @@ pub fn withdraw_recurring_fee(
         ]))
 }
 
-/// Process when we receive AUTO tokens for staking
+/// ## Description
+/// Process when we receive AUTO tokens for staking. Returns a [`ContractError`] on failure.
+///
+/// ## Params
+/// * **deps** is an object of type [`DepsMut`].
+///
+/// * **env** is an object of type [`Env`].
+///
+/// * **info** is an object of type [`MessageInfo`].
+///
+/// * **cw20_msg** is an object of type [`Cw20ReceiveMsg`].
 pub fn receive_cw20(
     deps: DepsMut,
     env: Env,
@@ -583,7 +682,17 @@ pub fn receive_cw20(
     }
 }
 
-/// Process stakings when AUTO is native token
+/// ## Description
+/// Process stakings when AUTO is native token. Returns a [`ContractError`] on failure.
+///
+/// ## Params
+/// * **deps** is an object of type [`DepsMut`].
+///
+/// * **env** is an object of type [`Env`].
+///
+/// * **info** is an object of type [`MessageInfo`].
+///
+/// * **num_stakes** is the number of stakings, which is an object of type [`u64`].
 pub fn receive_denom(
     deps: DepsMut,
     env: Env,
@@ -602,10 +711,24 @@ pub fn receive_denom(
     }
 }
 
-/// Update stakes for new stakings
-/// - Add user address to array `num_stakes` times
-/// - Update user's and total staking balances
-/// - Update executor
+/// ## Description
+/// Update stakes for new stakings. Returns a [`ContractError`] on failure.
+/// * Add user address to array `num_stakes` times
+/// * Update user's and total staking balances
+/// * Update executor
+///
+/// ## Params
+/// * **deps** is an object of type [`DepsMut`].
+///
+/// * **env** is an object of type [`Env`].
+///
+/// * **_info** is an object of type [`MessageInfo`].
+///
+/// * **sender** is the staker, which is an object of type [`Addr`].
+///
+/// * **num_stakes** is the number of stakings, which is an object of type [`u64`].
+///
+/// * **amount** is the staking amount, which is an object of type [`Uint128`].
 pub fn stake(
     deps: DepsMut,
     env: Env,
@@ -644,10 +767,20 @@ pub fn stake(
     ]))
 }
 
-/// Unstake AUTO
-/// - Remove from stakes array at indexes of `idxs`
-/// - Return staked AUTO
-/// - Updates executor
+/// ## Description
+/// Unstake AUTO. Returns a [`ContractError`] on failure.
+/// * Remove from stakes array at indexes of [`idxs`]
+/// * Return staked AUTO
+/// * Updates executor
+///
+/// ## Params
+/// * **deps** is an object of type [`DepsMut`].
+///
+/// * **env** is an object of type [`Env`].
+///
+/// * **info** is an object of type [`MessageInfo`].
+///
+/// * **idxs** is the index array of stakings, which is an object of type [`Vec<u64>`].
 pub fn unstake(
     deps: DepsMut,
     env: Env,
@@ -699,10 +832,18 @@ pub fn unstake(
         ]))
 }
 
+/// ## Description
 /// Util fcn for executor update
-/// It first checks the executor is set for current epoch
-/// If not, decide current epoch and set the executor
-/// If nobody staked yet, then executor is set to empty string
+/// * It first checks the executor is set for current epoch
+/// * If not, decide current epoch and set the executor
+/// * If nobody staked yet, then executor is set to empty string
+///
+/// ## Params
+/// * **state** is current [`STATE`]
+///
+/// * **env** is an object of type [`Env`].
+///
+/// * **blocks_in_epoch** is block counts included in a single epoch.
 fn _update_executor(state: &mut State, env: Env, blocks_in_epoch: u64) {
     let last_epoch = env.block.height / blocks_in_epoch * blocks_in_epoch;
     if state.last_epoch != last_epoch {
@@ -719,10 +860,16 @@ fn _update_executor(state: &mut State, env: Env, blocks_in_epoch: u64) {
     }
 }
 
-/// Update executor for current epoch
-/// It first checks the executor is set for current epoch
-/// If not, decide current epoch and set the executor
-/// If nobody staked yet, then executor is set to empty string
+/// ## Description
+/// Update executor for current epoch. Returns a [`ContractError`] on failure.
+/// * It first checks the executor is set for current epoch
+/// * If not, decide current epoch and set the executor
+/// * If nobody staked yet, then executor is set to empty string
+///
+/// ## Params
+/// * **deps** is an object of type [`DepsMut`].
+///
+/// * **env** is an object of type [`Env`].
 pub fn update_executor(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -737,7 +884,20 @@ pub fn update_executor(deps: DepsMut, env: Env) -> Result<Response, ContractErro
     ]))
 }
 
-/// Claim as admin
+/// ## Description
+/// Add new addresses to blacklist. Returns a [`ContractError`] on failure.
+///
+/// ## Params
+/// * **deps** is an object of type [`DepsMut`].
+///
+/// * **_env** is an object of type [`Env`].
+///
+/// * **info** is an object of type [`MessageInfo`].
+///
+/// * **addrs** is a list of addresses, which is an object of type [`Vec<String>`].
+///
+/// ## Executor
+/// Only the admin can execute this.
 pub fn add_to_blacklist(
     deps: DepsMut,
     _env: Env,
@@ -755,7 +915,20 @@ pub fn add_to_blacklist(
     Ok(Response::new().add_attribute("action", "add_to_blacklist"))
 }
 
-/// Claim as admin
+/// ## Description
+/// Remove addresses to blacklist. Returns a [`ContractError`] on failure.
+///
+/// ## Params
+/// * **deps** is an object of type [`DepsMut`].
+///
+/// * **_env** is an object of type [`Env`].
+///
+/// * **info** is an object of type [`MessageInfo`].
+///
+/// * **addrs** is a list of addresses, which is an object of type [`Vec<String>`].
+///
+/// ## Executor
+/// Only the admin can execute this.
 pub fn remove_from_blacklist(
     deps: DepsMut,
     _env: Env,
@@ -773,6 +946,14 @@ pub fn remove_from_blacklist(
     Ok(Response::new().add_attribute("action", "remove_from_blacklist"))
 }
 
+/// ## Description
+/// The entry point to the contract for processing replies from submessages.
+/// ## Params
+/// * **deps** is an object of type [`DepsMut`].
+///
+/// * **_env** is an object of type [`Env`].
+///
+/// * **msg** is an object of type [`Reply`].
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
@@ -781,8 +962,14 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
     }
 }
 
-/// Reply when execution is done
-/// - Sets the `curr_executing_request_id` back to default value
+/// ## Description
+/// Sets the `curr_executing_request_id` back to default value
+/// ## Params
+/// * **deps** is an object of type [`DepsMut`].
+///
+/// * **_env** is an object of type [`Env`].
+///
+/// * **_msg** is an object of type [`SubMsgResult`].
 pub fn execute_reply(
     deps: DepsMut,
     _env: Env,
@@ -794,6 +981,14 @@ pub fn execute_reply(
     Ok(Response::new().add_attributes(vec![attr("action", "finialize_execute")]))
 }
 
+/// ## Description
+/// Exposes all the queries available in the contract.
+/// ## Params
+/// * **deps** is an object of type [`Deps`].
+///
+/// * **env** is an object of type [`Env`].
+///
+/// * **msg** is an object of type [`QueryMsg`].
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -828,13 +1023,23 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-/// Return config
+/// ## Description
+/// Returns general contract parameters using a custom [`Config`] structure.
+///
+/// ## Params
+/// * **deps** is an object of type [`Deps`].
 pub fn query_config(deps: Deps) -> StdResult<Config> {
     let config = CONFIG.load(deps.storage)?;
     Ok(config)
 }
 
-/// Return info of reqeust with `id`, returns default value when not exists
+/// ## Description
+/// Return info of reqeust with `id` using [`RequestInfoResponse`] structure.
+///
+/// ## Params
+/// * **deps** is an object of type [`Deps`].
+///
+/// * **id** is the request id.
 pub fn query_request_info(deps: Deps, id: u64) -> StdResult<RequestInfoResponse> {
     let info = REQUESTS.load(deps.storage, id).unwrap_or(Request {
         user: zero_string(),
@@ -847,7 +1052,17 @@ pub fn query_request_info(deps: Deps, id: u64) -> StdResult<RequestInfoResponse>
     Ok(RequestInfoResponse { id, request: info })
 }
 
-/// Return several requests
+/// ## Description
+/// Returns an array with request data that contains items of type [`Request`]. Querying starts at `start_after` and returns `limit` pairs.
+/// ## Params
+/// * **deps** is an object of type [`Deps`].
+///
+/// * **start_after** is an [`Option`] field which accepts an id of type [`u64`].
+/// This is the request from which we start to query.
+///
+/// * **limit** is a [`Option`] type. Sets the number of requests to be retrieved.
+///
+/// * **order_by** is a [`OrderBy`] type.
 pub fn query_requests(
     deps: Deps,
     start_after: Option<u64>,
@@ -875,7 +1090,10 @@ pub fn query_requests(
     })
 }
 
-/// Return current state of requests and stakes
+/// ## Description
+/// Return current state of requests and stakes using [`StateResponse`]
+/// ## Params
+/// * **deps** is an object of type [`Deps`].
 pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
     let state = STATE.load(deps.storage)?;
     let resp = StateResponse {
@@ -890,7 +1108,12 @@ pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
     Ok(resp)
 }
 
-/// Return current epoch info
+/// ## Description
+/// Return current state of requests and stakes using [`EpochInfoResponse`]
+/// ## Params
+/// * **deps** is an object of type [`Deps`].
+///
+/// * **env** is an object of type [`Env`].
 pub fn query_epoch_info(deps: Deps, env: Env) -> StdResult<EpochInfoResponse> {
     let state = STATE.load(deps.storage)?;
     let config = CONFIG.load(deps.storage)?;
@@ -904,7 +1127,12 @@ pub fn query_epoch_info(deps: Deps, env: Env) -> StdResult<EpochInfoResponse> {
     Ok(resp)
 }
 
-/// Return staked amount of the user
+/// ## Description
+/// Return recurring fee amount of the user using [`RecurringFeeAmountResponse`]
+/// ## Params
+/// * **deps** is an object of type [`Deps`].
+///
+/// * **user** is a [`String`] which is the address of the user.
 pub fn query_recurring_fees(deps: Deps, user: String) -> StdResult<RecurringFeeAmountResponse> {
     let amount = RECURRING_BALANCE
         .load(deps.storage, &deps.api.addr_validate(&user)?)
@@ -914,7 +1142,12 @@ pub fn query_recurring_fees(deps: Deps, user: String) -> StdResult<RecurringFeeA
     Ok(resp)
 }
 
-/// Return staked amount of the user
+/// ## Description
+/// Return staked amount of the user using [`StakeAmountResponse`]
+/// ## Params
+/// * **deps** is an object of type [`Deps`].
+///
+/// * **user** is a [`String`] which is the address of the user.
 pub fn query_stake_amount(deps: Deps, user: String) -> StdResult<StakeAmountResponse> {
     let amount = STAKE_BALANCE
         .load(deps.storage, &deps.api.addr_validate(&user)?)
@@ -924,7 +1157,14 @@ pub fn query_stake_amount(deps: Deps, user: String) -> StdResult<StakeAmountResp
     Ok(resp)
 }
 
-/// Return stakes of a range
+/// ## Description
+/// Return stakings from `start` with limit of `limit` as [`StakesResponse`]
+/// ## Params
+/// * **deps** is an object of type [`Deps`].
+///
+/// * **start** is starting id of the stakings.
+///
+/// * **limit** is a [`u64`] of return size limit.
 pub fn query_stakes(deps: Deps, start: u64, limit: u64) -> StdResult<StakesResponse> {
     let state = STATE.load(deps.storage)?;
 
@@ -939,7 +1179,10 @@ pub fn query_stakes(deps: Deps, start: u64, limit: u64) -> StdResult<StakesRespo
     })
 }
 
-/// Return stakes of a range
+/// ## Description
+/// Return blacklist as [`BlacklistResponse`]
+/// ## Params
+/// * **deps** is an object of type [`Deps`].
 pub fn query_blacklist(deps: Deps) -> StdResult<BlacklistResponse> {
     let addrs: StdResult<Vec<(Addr, String)>> = BLACKLIST
         .range(deps.storage, None, None, OrderBy::Asc.into())

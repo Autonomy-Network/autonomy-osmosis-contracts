@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::state::Request;
 
+/// Config struct to initialze or update configuration
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
 pub struct CreateOrUpdateConfig {
     /// Contract admin

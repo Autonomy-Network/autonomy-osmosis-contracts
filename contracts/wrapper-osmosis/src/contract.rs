@@ -61,6 +61,17 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, W
     Ok(Response::default())
 }
 
+/// ## Description
+/// Exposes all the execute functions available in the contract.
+///
+/// ## Params
+/// * **deps** is an object of type [`Deps`].
+///
+/// * **env** is an object of type [`Env`].
+///
+/// * **info** is an object of type [`MessageInfo`].
+///
+/// * **msg** is an object of type [`ExecuteMsg`].
 #[entry_point]
 pub fn execute(
     deps: DepsMut<OsmosisQuery>,
@@ -99,15 +110,27 @@ pub fn execute(
     }
 }
 
-/// Wrap osmosis swap operation between two assets
-/// - Validates output amount to be in a specifc range
-/// - Params
-///     `user`: the address that receives the outputs
-///     `first`: swap info for the first pool, `denom_in` is the input asset for the swap
-///     `route`: route contains several pools connected to output asset
-///     `amount`: amount of input asset
-///     `min_output`: minimum output amount
-///     `max_output`: maximum output amount
+/// ## Description
+/// Wrap osmosis swap operation between two assets. Returns [`WrapperError`] on failure.
+///
+/// ## Params
+/// * **deps** is an object of type [`Deps`].
+///
+/// * **env** is an object of type [`Env`].
+///
+/// * **_info** is an object of type [`MessageInfo`].
+///
+/// * **user** is the address that receives the outputs.
+///
+/// * **first** is swap info for the first pool, `denom_in` is the input asset for the swap.
+///
+/// * **route** is route contains several pools connected to output asset.
+///
+/// * **amount** of input asset.
+///
+/// * **min_output** is minimum output amount.
+///
+/// * **max_output** is maximum output amount.
 pub fn execute_swap(
     deps: DepsMut<OsmosisQuery>,
     env: Env,
@@ -162,13 +185,25 @@ pub fn execute_swap(
         .add_messages(msgs))
 }
 
-/// Validates swap output result
-/// - Should be only called via this wrapper contract
-/// - Params
-///     `user`: address to receive outputs
-///     `denom`: denom for the output asset
-///     `balance_before`: balance of output asset before swap
-///     `min_output`, `max_output`: range of output amount
+/// ## Description
+/// Validates swap output result. Returns [`WrapperError`] on failure.
+///
+/// ## Params
+/// * **deps** is an object of type [`Deps`].
+///
+/// * **env** is an object of type [`Env`].
+///
+/// * **info** is an object of type [`MessageInfo`].
+///
+/// * **user** is the address that receives the outputs.
+///
+/// * **denom** of the output coin.
+///
+/// * **balance_before** is output token balance before swap.
+///
+/// * **min_output** is minimum output amount.
+///
+/// * **max_output** is maximum output amount.
 pub fn execute_check_range(
     deps: DepsMut<OsmosisQuery>,
     env: Env,
