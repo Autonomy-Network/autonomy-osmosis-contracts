@@ -62,6 +62,7 @@
       ]
     },
     "CreateOrUpdateConfig": {
+      "description": "Config struct to initialze or update configuration",
       "type": "object",
       "properties": {
         "admin": {

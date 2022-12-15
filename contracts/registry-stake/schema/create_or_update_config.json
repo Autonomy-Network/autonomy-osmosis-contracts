@@ -1,6 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateOrUpdateConfig",
+  "description": "Config struct to initialze or update configuration",
   "type": "object",
   "properties": {
     "admin": {

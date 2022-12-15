@@ -97,6 +97,7 @@
       "type": "string"
     },
     "Request": {
+      "title": "Description",
       "description": "Actual request struct",
       "type": "object",
       "required": [

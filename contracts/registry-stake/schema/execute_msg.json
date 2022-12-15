@@ -223,6 +223,54 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "Black list Add to blacklist",
+      "type": "object",
+      "required": [
+        "add_to_blacklist"
+      ],
+      "properties": {
+        "add_to_blacklist": {
+          "type": "object",
+          "required": [
+            "addrs"
+          ],
+          "properties": {
+            "addrs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Remove from blacklist",
+      "type": "object",
+      "required": [
+        "remove_from_blacklist"
+      ],
+      "properties": {
+        "remove_from_blacklist": {
+          "type": "object",
+          "required": [
+            "addrs"
+          ],
+          "properties": {
+            "addrs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {
@@ -308,6 +356,7 @@
       "type": "string"
     },
     "CreateOrUpdateConfig": {
+      "description": "Config struct to initialze or update configuration",
       "type": "object",
       "properties": {
         "admin": {

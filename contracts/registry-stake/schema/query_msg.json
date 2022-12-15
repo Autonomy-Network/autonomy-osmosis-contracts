@@ -16,6 +16,19 @@
       "additionalProperties": false
     },
     {
+      "description": "Get registry pending admin",
+      "type": "object",
+      "required": [
+        "pending_admin"
+      ],
+      "properties": {
+        "pending_admin": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Get registry config",
       "type": "object",
       "required": [
@@ -185,6 +198,19 @@
               "minimum": 0.0
             }
           }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Get array of blacklisted addresses",
+      "type": "object",
+      "required": [
+        "blacklist"
+      ],
+      "properties": {
+        "blacklist": {
+          "type": "object"
         }
       },
       "additionalProperties": false
