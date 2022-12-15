@@ -306,3 +306,189 @@ pub fn native_asset_info(denom: String) -> AssetInfo {
 pub fn token_asset_info(contract_addr: Addr) -> AssetInfo {
     AssetInfo::Token { contract_addr }
 }
+
+
+#[cfg(test)]
+mod test {
+    use super::super::testing::mock_dependencies;
+    use super::*;
+
+    use cosmwasm_std::testing::MOCK_CONTRACT_ADDR;
+    use cosmwasm_std::{to_binary, Addr, BankMsg, Coin, CosmosMsg, Uint128, WasmMsg};
+    use cw20::Cw20ExecuteMsg;
+
+
+    #[test]
+    fn test_asset_info() {
+        let token_info: AssetInfo = AssetInfo::Token {
+            contract_addr: Addr::unchecked("asset0000"),
+        };
+        let native_token_info: AssetInfo = AssetInfo::NativeToken {
+            denom: "uusd".to_string(),
+        };
+
+        assert_eq!(false, token_info.equal(&native_token_info));
+
+        assert_eq!(
+            false,
+            token_info.equal(&AssetInfo::Token {
+                contract_addr: Addr::unchecked("asset0001"),
+            })
+        );
+
+        assert_eq!(
+            true,
+            token_info.equal(&AssetInfo::Token {
+                contract_addr: Addr::unchecked("asset0000"),
+            })
+        );
+
+        assert_eq!(true, native_token_info.is_native_token());
+        assert_eq!(false, token_info.is_native_token());
+
+        let mut deps = mock_dependencies();
+
+        deps.querier.set_cw20_balance(
+            &String::from("asset0000"),
+            &String::from(MOCK_CONTRACT_ADDR),
+            123u128
+        );
+        deps.querier.set_base_balances(
+            &String::from(MOCK_CONTRACT_ADDR),
+            &[Coin::new(123u128, "uusd")]
+        );
+
+        assert_eq!(
+            native_token_info
+                .query_pool(&deps.as_ref().querier, Addr::unchecked(MOCK_CONTRACT_ADDR))
+                .unwrap(),
+            Uint128::new(123u128)
+        );
+        assert_eq!(
+            token_info
+                .query_pool(&deps.as_ref().querier, Addr::unchecked(MOCK_CONTRACT_ADDR))
+                .unwrap(),
+            Uint128::new(123u128)
+        );
+    }
+
+    #[test]
+    fn test_asset() {
+        let mut deps = mock_dependencies();
+
+        deps.querier.set_cw20_balance(
+            &String::from("asset0000"),
+            &String::from(MOCK_CONTRACT_ADDR),
+            123u128
+        );
+        deps.querier.set_cw20_balance(
+            &String::from("asset0000"),
+            &String::from("addr00000"),
+            123u128
+        );
+        deps.querier.set_base_balances(
+            &String::from(MOCK_CONTRACT_ADDR),
+            &[Coin::new(123123u128, "uusd")]
+        );
+        deps.querier.set_base_balances(
+            &String::from("addr00000"),
+            &[Coin::new(123123u128, "uusd")]
+        );
+
+        let token_asset = Asset {
+            amount: Uint128::new(123123u128),
+            info: AssetInfo::Token {
+                contract_addr: Addr::unchecked("asset0000"),
+            },
+        };
+        assert_eq!(
+            token_asset.is_native_token(), false
+        );
+
+        let native_token_asset = Asset {
+            amount: Uint128::new(123123u128),
+            info: AssetInfo::NativeToken {
+                denom: "uusd".to_string(),
+            },
+        };
+        assert_eq!(
+            native_token_asset.is_native_token(), true
+        );
+
+        assert_eq!(
+            token_asset
+                .into_msg(&deps.as_ref().querier, Addr::unchecked("addr0000"))
+                .unwrap(),
+            CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: String::from("asset0000"),
+                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                    recipient: String::from("addr0000"),
+                    amount: Uint128::new(123123u128),
+                })
+                .unwrap(),
+                funds: vec![],
+            })
+        );
+
+        assert_eq!(
+            native_token_asset
+                .into_msg(&deps.as_ref().querier, Addr::unchecked("addr0000"))
+                .unwrap(),
+            CosmosMsg::Bank(BankMsg::Send {
+                to_address: String::from("addr0000"),
+                amount: vec![Coin {
+                    denom: "uusd".to_string(),
+                    amount: Uint128::new(123123u128),
+                }]
+            })
+        );
+    }
+
+    #[test]
+    fn creating_instances() {
+        let info = AssetInfo::Token{ contract_addr: Addr::unchecked("mock_token") };
+        assert_eq!(info, AssetInfo::Token{ contract_addr: Addr::unchecked("mock_token")});
+
+        let info = AssetInfo::NativeToken{denom: "uusd".to_string()};
+        assert_eq!(info, AssetInfo::NativeToken{denom: String::from("uusd")});
+    }
+
+    #[test]
+    fn comparing() {
+        let uluna = AssetInfo::NativeToken{denom: "uluna".to_string()};
+        let uusd = AssetInfo::NativeToken{denom: "uusd".to_string()};
+        let astro = AssetInfo::Token{ contract_addr: Addr::unchecked("astro_token")};
+        let mars = AssetInfo::Token{ contract_addr: Addr::unchecked("mars_token")};
+
+        assert_eq!(uluna == uusd, false);
+        assert_eq!(uluna == astro, false);
+        assert_eq!(astro == mars, false);
+        assert_eq!(uluna == uluna.clone(), true);
+        assert_eq!(astro == astro.clone(), true);
+    }
+
+    #[test]
+    fn to_string() {
+        let info = AssetInfo::NativeToken{denom: "uusd".to_string()};
+        assert_eq!(info.to_string(), String::from("uusd"));
+
+        let info = AssetInfo::Token{ contract_addr: Addr::unchecked("mock_token")};
+        assert_eq!(info.to_string(), String::from("mock_token"));
+
+        let asset = Asset {
+            amount: Uint128::new(123u128),
+            info: AssetInfo::Token {
+                contract_addr: Addr::unchecked("mock_token"),
+            },
+        };
+        assert_eq!(asset.to_string(), String::from("123mock_token"));
+
+        let asset = Asset {
+            amount: Uint128::new(123u128),
+            info: AssetInfo::NativeToken {
+                denom: "uusd".to_string()
+            },
+        };
+        assert_eq!(asset.to_string(), String::from("123uusd"));
+    }
+}

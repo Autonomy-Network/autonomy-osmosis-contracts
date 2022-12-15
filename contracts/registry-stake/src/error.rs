@@ -72,6 +72,9 @@ pub enum ContractError {
 
     #[error("Insufficient recurring fee")]
     InsufficientRecurringFee {},
+
+    #[error("Target blacklisted")]
+    TargetBlacklisted {},
 }
 
 impl From<semver::Error> for ContractError {

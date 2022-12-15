@@ -107,6 +107,8 @@ pub enum Cw20HookMsg {
 pub enum QueryMsg {
     /// Get registry admin
     Admin {},
+    /// Get registry pending admin
+    PendingAdmin {},
     /// Get registry config
     Config {},
     /// Get current state of registry

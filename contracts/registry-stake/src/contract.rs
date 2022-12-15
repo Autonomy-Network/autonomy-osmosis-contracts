@@ -248,8 +248,8 @@ pub fn claim_admin(
 ) -> Result<Response, ContractError> {
     // Only admin can update config
     NEW_ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
-    let new_admin = NEW_ADMIN.get(deps.as_ref())?;
-    ADMIN.set(deps.branch(), new_admin)?;
+    ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
+    NEW_ADMIN.set(deps.branch(), None)?;
 
     Ok(Response::new()
         .add_attribute("action", "claim_admin")
@@ -283,6 +283,11 @@ pub fn create_request(
     let target_addr = deps.api.addr_validate(&request_info.target)?;
     let mut msgs: Vec<CosmosMsg> = vec![];
     let mut funds = info.funds.clone();
+
+    // Check if blacklisted
+    if BLACKLIST.has(deps.storage, &target_addr) {
+        return Err(ContractError::TargetBlacklisted {});
+    }
 
     // Recurring requests can't have input assets
     if request_info.is_recurring && request_info.input_asset != None {
@@ -978,7 +983,7 @@ pub fn execute_reply(
     let mut state = STATE.load(deps.storage)?;
     state.curr_executing_request_id = u64::MAX;
     STATE.save(deps.storage, &state)?;
-    Ok(Response::new().add_attributes(vec![attr("action", "finialize_execute")]))
+    Ok(Response::new().add_attributes(vec![attr("action", "finalize_execute")]))
 }
 
 /// ## Description
@@ -993,6 +998,8 @@ pub fn execute_reply(
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Admin {} => to_binary(&ADMIN.query_admin(deps)?),
+
+        QueryMsg::PendingAdmin {} => to_binary(&NEW_ADMIN.query_admin(deps)?),
 
         QueryMsg::Config {} => Ok(to_binary(&query_config(deps)?)?),
 
