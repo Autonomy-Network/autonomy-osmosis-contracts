@@ -529,7 +529,7 @@ pub fn execute_request(
     };
     msgs.push(SubMsg {
         id: 0,
-        msg: fee_asset.into_msg(&deps.querier, info.sender)?,
+        msg: fee_asset.into_msg(&deps.querier, info.sender.clone())?,
         gas_limit: None,
         reply_on: ReplyOn::Never,
     });
@@ -545,7 +545,7 @@ pub fn execute_request(
     Ok(Response::new().add_submessages(msgs).add_attributes(vec![
         attr("action", "execute_request"),
         attr("id", id.to_string()),
-        attr("executor", state.executor),
+        attr("executor", info.sender),
     ]))
 }
 
