@@ -30,6 +30,8 @@ use crate::state::{
 const CONTRACT_NAME: &str = "autonomy-registry-stake";
 /// Contract version that is used for migration.
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+/// Hard cap of stakes count
+const MAX_STAKES: u32 = 10000;
 
 /// ## Description
 /// Creates a new contract with the specified parameters in the [`InstantiateMsg`].
@@ -758,6 +760,11 @@ pub fn stake(
     let mut state = STATE.load(deps.storage)?;
     _update_executor(&mut state, env, config.blocks_in_epoch);
     STATE.save(deps.storage, &state)?;
+
+    // Validate hard cap
+    if state.stakes.len() as u64 + num_stakes > MAX_STAKES as u64 {
+        return Err(ContractError::StakesExceedCap {});
+    }
 
     // Update stakes array
     for _ in 0..num_stakes {

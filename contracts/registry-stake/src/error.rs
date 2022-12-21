@@ -61,6 +61,9 @@ pub enum ContractError {
     #[error("Invalid Stake Info")]
     InvalidStakeInfo {},
 
+    #[error("Stakes Exceed Cap")]
+    StakesExceedCap {},
+
     #[error("Idx not yours")]
     IdxNotYou {},
 
