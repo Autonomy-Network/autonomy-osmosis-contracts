@@ -477,7 +477,8 @@ pub fn execute_request(
     // Validate executor
     let cur_epoch = env.block.height / config.blocks_in_epoch * config.blocks_in_epoch;
     if cur_epoch != state.last_epoch {
-        return Err(ContractError::ExecutorNotUpdated {});
+        _update_executor(&mut state, env, config.blocks_in_epoch);
+        STATE.save(deps.storage, &state)?;
     }
 
     if !state.executor.is_empty() {

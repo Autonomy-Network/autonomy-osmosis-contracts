@@ -1673,20 +1673,28 @@ fn test_execute_request() {
     )
     .unwrap();
 
-    // ExecutorNotUpdated
+    // Without executor updated
     let info = mock_info("executor", &[]);
     let mut env = mock_env();
     env.block.height = 100001;
-    let err = execute(
+    let epoch = env.block.height / 100 * 100;
+    let _res = execute(
         deps.as_mut(),
         env.clone(),
         info,
-        ExecuteMsg::ExecuteRequest { id: 0 },
+        ExecuteMsg::ExecuteRequest { id: 1 },
     )
-    .err();
+    .unwrap();
     assert_eq!(
-        err,
-        Some(ContractError::ExecutorNotUpdated {})
+        from_binary::<EpochInfoResponse>(
+            &query(deps.as_ref(), env.clone(), QueryMsg::EpochInfo {}).unwrap()
+        )
+        .unwrap(),
+        EpochInfoResponse {
+            cur_epoch: epoch,
+            last_epoch: epoch,
+            executor: "executor".to_string()
+        }
     );
 
     // Update Executor
@@ -1701,7 +1709,7 @@ fn test_execute_request() {
     .unwrap();
 
     // TODO: InvalidExecutor
-    let info = mock_info("not_sexecutor", &[]);
+    let info = mock_info("not_executor", &[]);
     let mut env = mock_env();
     env.block.height = 100003;
     let err = execute(
@@ -1769,7 +1777,7 @@ fn test_execute_request() {
         .unwrap(),
         StateResponse {
             curr_executing_request_id: 0,
-            total_requests: 2,
+            total_requests: 1,
             total_recurring_fee: Uint128::zero(),
             next_request_id: 3,
             total_stake_amount: Uint128::from(2000u128),
@@ -1840,7 +1848,7 @@ fn test_execute_request() {
         .unwrap(),
         StateResponse {
             curr_executing_request_id: 2,
-            total_requests: 2,
+            total_requests: 1,
             total_recurring_fee: Uint128::from(10000u128),
             next_request_id: 3,
             total_stake_amount: Uint128::from(2000u128),
@@ -1923,7 +1931,7 @@ fn test_execute_request() {
         .unwrap(),
         StateResponse {
             curr_executing_request_id: u64::MAX,
-            total_requests: 2,
+            total_requests: 1,
             total_recurring_fee: Uint128::from(10000u128),
             next_request_id: 3,
             total_stake_amount: Uint128::from(2000u128),
