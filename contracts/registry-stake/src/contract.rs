@@ -464,7 +464,13 @@ pub fn execute_request(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let request = REQUESTS.load(deps.storage, id)?;
+    let target = deps.api.addr_validate(&request.target)?;
     let mut state = STATE.load(deps.storage)?;
+
+    // Check if blacklisted
+    if BLACKLIST.has(deps.storage, &target) {
+        return Err(ContractError::TargetBlacklisted {});
+    }
 
     // Validate executor
     let cur_epoch = env.block.height / config.blocks_in_epoch * config.blocks_in_epoch;
@@ -501,7 +507,6 @@ pub fn execute_request(
     let mut msgs = vec![];
 
     if let Some(input_asset) = request.input_asset.clone() {
-        let target = deps.api.addr_validate(&request.target)?;
         msgs.push(SubMsg {
             id: 0,
             msg: input_asset.into_msg(&deps.querier, target)?,
