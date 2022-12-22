@@ -36,45 +36,18 @@ impl Asset {
         self.info.is_native_token()
     }
 
-    /// Calculates and returns a tax for a chain's native token. For other tokens it returns zero.
-    /// ## Params
-    /// * **self** is the type of the caller object.
-    ///
-    /// * **querier** is an object of type [`QuerierWrapper`]
-    pub fn compute_tax(&self, _querier: &QuerierWrapper) -> StdResult<Uint128> {
-        Ok(Uint128::zero())
-    }
-
-    /// Calculates and returns a deducted tax for transferring the native token from the chain. For other tokens it returns an [`Err`].
-    /// ## Params
-    /// * **self** is the type of the caller object.
-    ///
-    /// * **querier** is an object of type [`QuerierWrapper`]
-    pub fn deduct_tax(&self, querier: &QuerierWrapper) -> StdResult<Coin> {
-        let amount = self.amount;
-        if let AssetInfo::NativeToken { denom } = &self.info {
-            Ok(Coin {
-                denom: denom.to_string(),
-                amount: amount.checked_sub(self.compute_tax(querier)?)?,
-            })
-        } else {
-            Err(StdError::generic_err("cannot deduct tax from token asset"))
-        }
-    }
-
     /// Returns a message of type [`CosmosMsg`].
     ///
     /// For native tokens of type [`AssetInfo`] uses the default method [`BankMsg::Send`] to send a token amount to a recipient.
-    /// Before the token is sent, we need to deduct a tax.
     ///
-    /// For a token of type [`AssetInfo`] we use the default method [`Cw20ExecuteMsg::Transfer`] and so there's no need to deduct any other tax.
+    /// For a token of type [`AssetInfo`] we use the default method [`Cw20ExecuteMsg::Transfer`].
     /// ## Params
     /// * **self** is the type of the caller object.
     ///
     /// * **querier** is an object of type [`QuerierWrapper`]
     ///
     /// * **recipient** is the address where the funds will be sent.
-    pub fn into_msg(self, querier: &QuerierWrapper, recipient: Addr) -> StdResult<CosmosMsg> {
+    pub fn into_msg(self, _querier: &QuerierWrapper, recipient: Addr) -> StdResult<CosmosMsg> {
         let amount = self.amount;
 
         match &self.info {
@@ -86,9 +59,12 @@ impl Asset {
                 })?,
                 funds: vec![],
             })),
-            AssetInfo::NativeToken { .. } => Ok(CosmosMsg::Bank(BankMsg::Send {
+            AssetInfo::NativeToken { denom } => Ok(CosmosMsg::Bank(BankMsg::Send {
                 to_address: recipient.to_string(),
-                amount: vec![self.deduct_tax(querier)?],
+                amount: vec![Coin {
+                    denom: denom.to_string(),
+                    amount,
+                }],
             })),
         }
     }
@@ -307,7 +283,6 @@ pub fn token_asset_info(contract_addr: Addr) -> AssetInfo {
     AssetInfo::Token { contract_addr }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::super::testing::mock_dependencies;
@@ -316,7 +291,6 @@ mod test {
     use cosmwasm_std::testing::MOCK_CONTRACT_ADDR;
     use cosmwasm_std::{to_binary, Addr, BankMsg, Coin, CosmosMsg, Uint128, WasmMsg};
     use cw20::Cw20ExecuteMsg;
-
 
     #[test]
     fn test_asset_info() {
@@ -351,11 +325,11 @@ mod test {
         deps.querier.set_cw20_balance(
             &String::from("asset0000"),
             &String::from(MOCK_CONTRACT_ADDR),
-            123u128
+            123u128,
         );
         deps.querier.set_base_balances(
             &String::from(MOCK_CONTRACT_ADDR),
-            &[Coin::new(123u128, "uusd")]
+            &[Coin::new(123u128, "uusd")],
         );
 
         assert_eq!(
@@ -379,21 +353,19 @@ mod test {
         deps.querier.set_cw20_balance(
             &String::from("asset0000"),
             &String::from(MOCK_CONTRACT_ADDR),
-            123u128
+            123u128,
         );
         deps.querier.set_cw20_balance(
             &String::from("asset0000"),
             &String::from("addr00000"),
-            123u128
+            123u128,
         );
         deps.querier.set_base_balances(
             &String::from(MOCK_CONTRACT_ADDR),
-            &[Coin::new(123123u128, "uusd")]
+            &[Coin::new(123123u128, "uusd")],
         );
-        deps.querier.set_base_balances(
-            &String::from("addr00000"),
-            &[Coin::new(123123u128, "uusd")]
-        );
+        deps.querier
+            .set_base_balances(&String::from("addr00000"), &[Coin::new(123123u128, "uusd")]);
 
         let token_asset = Asset {
             amount: Uint128::new(123123u128),
@@ -401,9 +373,7 @@ mod test {
                 contract_addr: Addr::unchecked("asset0000"),
             },
         };
-        assert_eq!(
-            token_asset.is_native_token(), false
-        );
+        assert_eq!(token_asset.is_native_token(), false);
 
         let native_token_asset = Asset {
             amount: Uint128::new(123123u128),
@@ -411,9 +381,7 @@ mod test {
                 denom: "uusd".to_string(),
             },
         };
-        assert_eq!(
-            native_token_asset.is_native_token(), true
-        );
+        assert_eq!(native_token_asset.is_native_token(), true);
 
         assert_eq!(
             token_asset
@@ -446,19 +414,41 @@ mod test {
 
     #[test]
     fn creating_instances() {
-        let info = AssetInfo::Token{ contract_addr: Addr::unchecked("mock_token") };
-        assert_eq!(info, AssetInfo::Token{ contract_addr: Addr::unchecked("mock_token")});
+        let info = AssetInfo::Token {
+            contract_addr: Addr::unchecked("mock_token"),
+        };
+        assert_eq!(
+            info,
+            AssetInfo::Token {
+                contract_addr: Addr::unchecked("mock_token")
+            }
+        );
 
-        let info = AssetInfo::NativeToken{denom: "uusd".to_string()};
-        assert_eq!(info, AssetInfo::NativeToken{denom: String::from("uusd")});
+        let info = AssetInfo::NativeToken {
+            denom: "uusd".to_string(),
+        };
+        assert_eq!(
+            info,
+            AssetInfo::NativeToken {
+                denom: String::from("uusd")
+            }
+        );
     }
 
     #[test]
     fn comparing() {
-        let uluna = AssetInfo::NativeToken{denom: "uluna".to_string()};
-        let uusd = AssetInfo::NativeToken{denom: "uusd".to_string()};
-        let astro = AssetInfo::Token{ contract_addr: Addr::unchecked("astro_token")};
-        let mars = AssetInfo::Token{ contract_addr: Addr::unchecked("mars_token")};
+        let uluna = AssetInfo::NativeToken {
+            denom: "uluna".to_string(),
+        };
+        let uusd = AssetInfo::NativeToken {
+            denom: "uusd".to_string(),
+        };
+        let astro = AssetInfo::Token {
+            contract_addr: Addr::unchecked("astro_token"),
+        };
+        let mars = AssetInfo::Token {
+            contract_addr: Addr::unchecked("mars_token"),
+        };
 
         assert_eq!(uluna == uusd, false);
         assert_eq!(uluna == astro, false);
@@ -469,10 +459,14 @@ mod test {
 
     #[test]
     fn to_string() {
-        let info = AssetInfo::NativeToken{denom: "uusd".to_string()};
+        let info = AssetInfo::NativeToken {
+            denom: "uusd".to_string(),
+        };
         assert_eq!(info.to_string(), String::from("uusd"));
 
-        let info = AssetInfo::Token{ contract_addr: Addr::unchecked("mock_token")};
+        let info = AssetInfo::Token {
+            contract_addr: Addr::unchecked("mock_token"),
+        };
         assert_eq!(info.to_string(), String::from("mock_token"));
 
         let asset = Asset {
@@ -486,7 +480,7 @@ mod test {
         let asset = Asset {
             amount: Uint128::new(123u128),
             info: AssetInfo::NativeToken {
-                denom: "uusd".to_string()
+                denom: "uusd".to_string(),
             },
         };
         assert_eq!(asset.to_string(), String::from("123uusd"));
