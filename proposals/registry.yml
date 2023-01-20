@@ -5,7 +5,7 @@ description: |
   - [CommonWealth](https://gov.osmosis.zone/discussion/6921-proposal-for-adding-limits-and-stops)
   - [Source code](https://github.com/Autonomy-Network/autonomy-osmosis-contracts/tree/main/contracts/registry-stake)
 
-  The binary is compiled at commit [ebc2299](https://github.com/Autonomy-Network/autonomy-osmosis-contracts/commit/ebc22996a335e8b76a706b44f7f143bdfa107863) using [workspace-optimizer](https://github.com/CosmWasm/rust-optimizer/tree/v0.12.8) v0.12.8.
+  The binary is compiled at commit [02528b9](https://github.com/Autonomy-Network/autonomy-osmosis-contracts/commit/02528b908b97c0a5548623972790df59122ddc5d) using [workspace-optimizer](https://github.com/CosmWasm/rust-optimizer/tree/v0.12.8) v0.12.8.
   Use the following command:
 
   ```
@@ -19,10 +19,10 @@ description: |
 
   ```
   # Intermediate
-  e2b17a2b851c7d7b34a7d9db007b4c3286350682bcc4d7e93ee40fe49467dbe5 ./target/wasm32-unknown-unknown/release/registry_stake.wasm
+  2443f923abd18671c42cb524c98f0711cfc1df6ce71f8261f1987c1d0d8917d2 ./target/wasm32-unknown-unknown/release/registry_stake.wasm
 
   # Optimized
-  4b8b2e9e04d7c80ac4b4727a151087b2459fcb9967434b2a275fde88590f887c registry_stake.wasm
+  7ae0d235e6d80e6326b8a6546f8d826c2ea9c01bcba5cda89d3cf27f0f77835f registry_stake.wasm
   ```
 
   We encourage voters to independently validate that the binary code proposed on-chain matches the Rust source code. The following command may be helpful:

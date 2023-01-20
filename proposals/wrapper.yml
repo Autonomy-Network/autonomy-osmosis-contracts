@@ -6,7 +6,7 @@ description: |
   - [CommonWealth](https://gov.osmosis.zone/discussion/6921-proposal-for-adding-limits-and-stops)
   - [Source code](https://github.com/Autonomy-Network/autonomy-osmosis-contracts/tree/main/contracts/wrapper-osmosis)
 
-  The binary is compiled at commit [ebc2299](https://github.com/Autonomy-Network/autonomy-osmosis-contracts/commit/ebc22996a335e8b76a706b44f7f143bdfa107863) using workspace-optimizer v0.12.8
+  The binary is compiled at commit [02528b9](https://github.com/Autonomy-Network/autonomy-osmosis-contracts/commit/02528b908b97c0a5548623972790df59122ddc5d) using workspace-optimizer v0.12.8
   Use the following command:
 
   ```
@@ -20,10 +20,10 @@ description: |
 
   ```
   # Intermediate
-  a913cfceb35207dcf6d5ac558c0b1dc923a11ceebe6ebc693d1155fd4237bde6 ./target/wasm32-unknown-unknown/release/wrapper_osmosis.wasm
+  0c24d84bd651edd3674f7646d4bb80a6ce8b0f62958e0e7014d9a27a73c71a52 ./target/wasm32-unknown-unknown/release/wrapper_osmosis.wasm
 
   # Optimized
-  cfa308e1129622eded62d2e9f2b5211f490a2a1c549ab8a9dec3c57a1ffd8479  wrapper_osmosis.wasm
+  fccca0c526dfff62c244e6c62d04e15c0ec71174f082213aeebb89a6df36731a  wrapper_osmosis.wasm
   ```
 
   We encourage voters to independently validate that the binary code proposed on-chain matches the Rust source code. The following command may be helpful:
