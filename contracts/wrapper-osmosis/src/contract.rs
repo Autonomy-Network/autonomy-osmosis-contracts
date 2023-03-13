@@ -1,3 +1,4 @@
+use std::any;
 use std::ops::Sub;
 
 use cosmwasm_std::{
@@ -6,6 +7,9 @@ use cosmwasm_std::{
 };
 use cw2::{get_contract_version, set_contract_version};
 use osmo_bindings::{OsmosisMsg, OsmosisQuery, Step, Swap, SwapAmountWithLimit};
+use osmosis_std::types::osmosis::gamm::v1beta1::{MsgSwapExactAmountIn, SwapAmountInRoute};
+use osmosis_std::types::cosmos::base::v1beta1::{Coin as OsmoCoin};
+
 use semver::Version;
 
 use crate::error::WrapperError;
@@ -81,14 +85,15 @@ pub fn execute(
 ) -> Result<Response<OsmosisMsg>, WrapperError> {
     match msg {
         ExecuteMsg::Swap {
-            user,
-            first,
+            sender,
             route,
-            amount,
+            denom_in,
+            amount_in,
             min_output,
             max_output,
+            denom_out,
         } => execute_swap(
-            deps, env, info, user, first, route, amount, min_output, max_output,
+            deps, env, info, sender, route, amount_in, denom_in, min_output, max_output, denom_out
         ),
 
         ExecuteMsg::CheckRange {
@@ -135,44 +140,40 @@ pub fn execute_swap(
     deps: DepsMut<OsmosisQuery>,
     env: Env,
     _info: MessageInfo,
-    user: String,
-    first: Swap,
-    route: Vec<Step>,
-    amount: Uint128,
+    sender: String,
+    route: Vec<SwapAmountInRoute>,
+    amount_in: Uint128,
+    denom_in: String,
     min_output: Uint128,
     max_output: Uint128,
+    denom_out: String,
 ) -> Result<Response<OsmosisMsg>, WrapperError> {
     let mut msgs: Vec<CosmosMsg<OsmosisMsg>> = vec![];
-
     // Prepare swap message
-    let swap = OsmosisMsg::Swap {
-        first: first.clone(),
-        amount: SwapAmountWithLimit::ExactIn {
-            input: amount,
-            min_output,
-        },
-        route: route.clone(),
+    
+    let swap = MsgSwapExactAmountIn {
+        sender: sender.clone(),
+        routes: route,
+        token_in: Some(OsmoCoin{
+            denom: denom_in,
+            amount: amount_in.to_string(),
+        }),
+        token_out_min_amount: min_output.to_string(),
     };
-    msgs.push(swap.into());
 
-    // Get output denom
-    let last_denom = if !route.is_empty() {
-        route[route.len() - 1].denom_out.clone()
-    } else {
-        first.denom_out
-    };
+    msgs.push(swap.into());
 
     // Read current balance of the output asset
     let coin_balance = deps
         .querier
-        .query_balance(env.contract.address.to_string(), last_denom.clone())?;
+        .query_balance(env.contract.address.to_string(), denom_out.clone())?;
 
     // Add msg to check output amount
     msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: env.contract.address.to_string(),
         msg: to_binary(&ExecuteMsg::CheckRange {
-            user,
-            denom: last_denom,
+            user: sender.clone(),
+            denom: denom_out,
             balance_before: coin_balance.amount,
             min_output,
             max_output,
@@ -305,23 +306,29 @@ mod tests {
         assert_eq!(0, res.messages.len());
 
         let info = mock_info("creator", &[]);
-        let first = Swap { pool_id: 1, denom_in: "in".to_string(), denom_out: "out".to_string() };
+        // let first = Swap { pool_id: 1, denom_in: "in".to_string(), denom_out: "out".to_string() };
         let msg = ExecuteMsg::Swap {
-            user: "addr0".to_string(),
-            first: first.clone(),
+            sender: "addr0".to_string(),
             route: vec![],
-            amount: Uint128::from(10u128),
+            denom_in: "earth".to_owned(),
+            amount_in: Uint128::from(10u128),
             min_output: Uint128::from(10u128),
-            max_output: Uint128::from(10u128)
+            max_output: Uint128::from(10u128),
+            denom_out: "out".to_owned(),
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(
             res.messages,
             vec![
-                SubMsg::new(OsmosisMsg::Swap { first, route: vec![], amount: SwapAmountWithLimit::ExactIn {
-                    input: Uint128::from(10u128),
-                    min_output: Uint128::from(10u128),
-                } }),
+                SubMsg::new(MsgSwapExactAmountIn{
+                    sender: "addr0".to_string(),
+                    routes: vec![],
+                    token_in: Some(OsmoCoin {
+                        denom: "earth".to_owned(),
+                        amount: Uint128::from(10u128).to_string(),
+                    }),
+                    token_out_min_amount: Uint128::from(10u128).to_string()
+                }),
                 SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: MOCK_CONTRACT_ADDR.to_string(),
                     msg: to_binary(&ExecuteMsg::CheckRange {
