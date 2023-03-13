@@ -1,13 +1,11 @@
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use cosmwasm_schema::cw_serde;
+use cosmwasm_std::{CosmosMsg, CustomMsg, Uint128};
 
 use crate::types::SwapAmountWithLimit;
 use crate::{Step, Swap};
-use cosmwasm_std::{CosmosMsg, CustomMsg, Uint128};
 
-#[derive(Serialize, Deserialize, Clone, Eq, PartialEq, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
 /// A number of Custom messages that can call into the Osmosis bindings
+#[cw_serde]
 pub enum OsmosisMsg {
     /// CreateDenom creates a new factory denom, of denomination:
     /// factory/{creating contract bech32 address}/{Subdenom}
@@ -63,11 +61,23 @@ impl OsmosisMsg {
         }
     }
 
-    pub fn burn_contract_tokens(denom: String, amount: Uint128) -> Self {
+    pub fn mint_contract_tokens(denom: String, amount: Uint128, mint_to_address: String) -> Self {
+        OsmosisMsg::MintTokens {
+            denom,
+            amount,
+            mint_to_address,
+        }
+    }
+
+    pub fn burn_contract_tokens(
+        denom: String,
+        amount: Uint128,
+        _burn_from_address: String,
+    ) -> Self {
         OsmosisMsg::BurnTokens {
             denom,
             amount,
-            burn_from_address: "".to_string(),
+            burn_from_address: "".to_string(), // burn_from_address is currently disabled.
         }
     }
 }
