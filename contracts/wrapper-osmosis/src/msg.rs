@@ -16,7 +16,7 @@ pub struct MigrateMsg {}
 pub enum ExecuteMsg {
     Swap {
         // Address of the user for this swap
-        sender: String,
+        user: String,
         // Swap routes
         route: Vec<SwapAmountInRoute>,
         // Input denom
