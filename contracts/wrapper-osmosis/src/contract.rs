@@ -149,8 +149,8 @@ pub fn execute_swap(
     denom_out: String,
 ) -> Result<Response<OsmosisMsg>, WrapperError> {
     let mut msgs: Vec<CosmosMsg<OsmosisMsg>> = vec![];
-    // Prepare swap message
     
+    // Prepare swap message
     let swap = MsgSwapExactAmountIn {
         sender:  env.contract.address.to_string(),
         routes: route,
