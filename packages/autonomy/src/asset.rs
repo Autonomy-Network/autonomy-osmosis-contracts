@@ -301,24 +301,22 @@ mod test {
             denom: "uusd".to_string(),
         };
 
-        assert_eq!(false, token_info.equal(&native_token_info));
+        assert!(!token_info.equal(&native_token_info));
 
-        assert_eq!(
-            false,
-            token_info.equal(&AssetInfo::Token {
+        assert!(
+            !token_info.equal(&AssetInfo::Token {
                 contract_addr: Addr::unchecked("asset0001"),
             })
         );
 
-        assert_eq!(
-            true,
+        assert!(
             token_info.equal(&AssetInfo::Token {
                 contract_addr: Addr::unchecked("asset0000"),
             })
         );
 
-        assert_eq!(true, native_token_info.is_native_token());
-        assert_eq!(false, token_info.is_native_token());
+        assert!(native_token_info.is_native_token());
+        assert!(!token_info.is_native_token());
 
         let mut deps = mock_dependencies();
 
@@ -373,7 +371,7 @@ mod test {
                 contract_addr: Addr::unchecked("asset0000"),
             },
         };
-        assert_eq!(token_asset.is_native_token(), false);
+        assert!(!token_asset.is_native_token());
 
         let native_token_asset = Asset {
             amount: Uint128::new(123123u128),
@@ -381,7 +379,7 @@ mod test {
                 denom: "uusd".to_string(),
             },
         };
-        assert_eq!(native_token_asset.is_native_token(), true);
+        assert!(native_token_asset.is_native_token());
 
         assert_eq!(
             token_asset
@@ -450,11 +448,11 @@ mod test {
             contract_addr: Addr::unchecked("mars_token"),
         };
 
-        assert_eq!(uluna == uusd, false);
-        assert_eq!(uluna == astro, false);
-        assert_eq!(astro == mars, false);
-        assert_eq!(uluna == uluna.clone(), true);
-        assert_eq!(astro == astro.clone(), true);
+        assert!(uluna != uusd);
+        assert!(uluna != astro);
+        assert!(astro != mars);
+        assert!(uluna == uluna.clone());
+        assert!(astro == astro.clone());
     }
 
     #[test]
