@@ -1,5 +1,4 @@
-use osmo_bindings::{Step, Swap, SwapAmount, OsmosisMsg};
-use osmosis_std::types::osmosis::gamm::v1beta1::{SwapAmountInRoute, MsgSwapExactAmountIn};
+use osmosis_std::types::osmosis::gamm::v1beta1::{SwapAmountInRoute};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

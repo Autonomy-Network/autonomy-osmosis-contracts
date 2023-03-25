@@ -1,4 +1,3 @@
-use std::any;
 use std::ops::Sub;
 
 use cosmwasm_std::{
@@ -172,7 +171,7 @@ pub fn execute_swap(
     msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: env.contract.address.to_string(),
         msg: to_binary(&ExecuteMsg::CheckRange {
-            user: user.clone(),
+            user,
             denom: denom_out,
             balance_before: coin_balance.amount,
             min_output,
