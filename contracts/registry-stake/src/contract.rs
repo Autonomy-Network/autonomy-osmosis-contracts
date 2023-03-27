@@ -292,7 +292,7 @@ pub fn create_request(
     }
 
     // Recurring requests can't have input assets
-    if request_info.is_recurring && request_info.input_asset != None {
+    if request_info.is_recurring && request_info.input_asset.is_some() {
         return Err(ContractError::NoInputAssetForRecurring {});
     }
 

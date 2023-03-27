@@ -27,7 +27,7 @@ impl From<CommonError> for StdError {
     fn from(source: CommonError) -> Self {
         match source {
             CommonError::Std(e) => e,
-            e => StdError::generic_err(format!("{}", e)),
+            e => StdError::generic_err(format!("{e}")),
         }
     }
 }

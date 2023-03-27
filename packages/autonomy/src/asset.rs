@@ -110,8 +110,8 @@ pub enum AssetInfo {
 impl fmt::Display for AssetInfo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            AssetInfo::NativeToken { denom } => write!(f, "{}", denom),
-            AssetInfo::Token { contract_addr } => write!(f, "{}", contract_addr),
+            AssetInfo::NativeToken { denom } => write!(f, "{denom}"),
+            AssetInfo::Token { contract_addr } => write!(f, "{contract_addr}"),
         }
     }
 }
@@ -193,8 +193,7 @@ impl AssetInfo {
             AssetInfo::NativeToken { denom } => {
                 if !denom.starts_with("ibc/") && denom != &denom.to_lowercase() {
                     return Err(StdError::generic_err(format!(
-                        "Non-IBC token denom {} should be lowercase",
-                        denom
+                        "Non-IBC token denom {denom} should be lowercase"
                     )));
                 }
             }
@@ -211,8 +210,7 @@ impl AssetInfo {
 pub fn addr_validate_to_lower(api: &dyn Api, addr: &str) -> StdResult<Addr> {
     if addr.to_lowercase() != addr {
         return Err(StdError::generic_err(format!(
-            "Address {} should be lowercase",
-            addr
+            "Address {addr} should be lowercase"
         )));
     }
     api.addr_validate(addr)
